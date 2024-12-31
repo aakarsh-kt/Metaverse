@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum Role{
+  admin
+  user
+}
+model User{
+  id String @id @unique @default(cuid())
+  username String @unique
+  password String
+  spaces Space[]
+  avatarID String?
+  role Role
+  avatar Avatar? @relation(fields: [avatarID],references: [avatarID])
+}
+
+model Space {
+  spaceID String @id @unique @default(cuid())
+  name String   
+  creatorID String
+  width Int
+  height Int
+  thumbnail String?
+  creator User @relation(fields: [creatorID],references: [id])
+  element SpaceElement[]
+}
+model SpaceElement{
+  id String @id @default(cuid()) @unique
+  elementID String
+  spaceID String
+  x Int
+  y Int
+  space Space @relation(fields: [spaceID],references: [spaceID])
+  element Element @relation(fields: [elementID],references: [elementID])
+}
+
+model Avatar{
+  avatarID String @id @unique @default(cuid())
+  url String
+  name String
+  users User[]
+}
+
+model Element{
+  elementID String @id @unique @default(cuid())
+  width Int
+  height Int
+  imageUrl String
+  element SpaceElement[]
+  mapElements MapElements[]
+}
+
+model Map{
+  mapID String @id @unique @default(cuid())
+  width Int
+  height Int
+  name String
+  mapElements MapElements[]
+  thumbnail String
+}
+
+model MapElements {
+  id String @id @unique @default(cuid())
+  mapID String
+  elementID String
+  x Int?
+  y Int?
+  map Map @relation(fields: [mapID],references: [mapID])
+  element Element @relation(fields: [elementID],references: [elementID])
+}
