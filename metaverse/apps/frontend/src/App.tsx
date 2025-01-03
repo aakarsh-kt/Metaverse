@@ -6,6 +6,8 @@ import Spaces from "./pages/spaces";
 import "./index.css";
 import Lounge from "./pages/lounge";
 import ArenaMap from "./pages/arenaMap";
+import ArenaSpace from "./pages/arenaSpace";
+import CreateSpace from "./pages/createSpace";
 const App=()=>{
   return (
       <BrowserRouter>
@@ -16,6 +18,8 @@ const App=()=>{
         <Route path="/space" element={<Spaces/>}/>
         <Route path="/lounge" element={<Lounge/>}/>
         <Route path="/arenaMap" element={<ArenaMap/>}/>
+        <Route path="/arenaSpace" element={<ArenaSpace/>}/>
+        <Route path="/createSpace" element={<CreateSpace/>}/>
       </Routes>
      </BrowserRouter>
   )

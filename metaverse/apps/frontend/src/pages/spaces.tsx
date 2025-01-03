@@ -48,27 +48,29 @@ const Spaces=()=>{
         navigate("/lounge", { state: { id: id  } });
     }
     return(
-        <div className="flex flex-col items-center justify-start bg-slate-500 max-w-screen h-screen ">
+        <div className="flex flex-col items-center justify-start bg-slate-500 max-w-screen h-screen  ">
             <div className=""><Navbar/></div>
-            Your Spaces
-            <div className="flex  items-center justify-between gap-2">
+            <div className="flex  items-center justify-between gap-2 p-2">
                 <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/arenaSpace")}>Create Space</button>
             {admin &&  <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/arenaMap")}>Create Map</button>}
             </div>
            {allspaces.length>0 &&
-          
-          <div className="flex m-2 justify-between gap-2 h-max flex-wrap ">
-             { allspaces.map((s)=>(
-                 
-                    <div key={s.spaceID} className="flex flex-col bg-red-500 p-2 rounded-md cursor-pointer" onClick={()=>handleSpaceClick(s.spaceID)}>
-                        <h2>{s.spaceID}</h2>
-                        <h2>{s.name}</h2>
-                        <h2>{s.thumbnail}</h2>
-                        <h2>{s.dimensions}</h2>
-                       
-                    </div>
-                // <h1 key={s.spaceID}>{s.spaceID}</h1>
-               ))}
+          <div className="flex flex-col items-center w-3/4 h-3/4 ">
+              
+                <h1 className="text-white text-2xl m-2">Your Spaces</h1>
+              <div className="flex m-2 justify-between gap-2 overflow-auto flex-wrap ">
+                 { allspaces.map((s)=>(
+              
+                        <div key={s.spaceID} className="flex flex-col bg-red-500 p-2 rounded-md cursor-pointer w-60" onClick={()=>handleSpaceClick(s.spaceID)}>
+                            <h2>{s.spaceID}</h2>
+                            <h2>{s.name}</h2>
+                            <h2>{s.thumbnail}</h2>
+                            <h2>{s.dimensions}</h2>
+              
+                        </div>
+                    // <h1 key={s.spaceID}>{s.spaceID}</h1>
+                   ))}
+              </div>
           </div>
            
            }

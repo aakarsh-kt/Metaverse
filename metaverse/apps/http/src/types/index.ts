@@ -42,6 +42,15 @@ export const AddElementSchema=z.object({
 
 })
 
+export const AddElementSchemaToMap=z.object({
+
+    elementID:z.string(),
+    mapID:z.string(),
+    x:z.number(),
+    y:z.number()
+
+})
+
 export const DeleteElementSchema= z.object({
     elementID:z.string()
 })
@@ -54,7 +63,10 @@ export const CreateMapSchema = z.object({
         elementID:z.string(),
         x: z.number(),
         y: z.number()
-    }))
+    })).optional()
+})
+export const GetMapElementSchema=z.object({
+    mapID:z.string()
 })
 
 export const CreateAvatarSchema = z.object({

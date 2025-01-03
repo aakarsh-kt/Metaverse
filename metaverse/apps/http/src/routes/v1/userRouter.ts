@@ -79,3 +79,28 @@ userRouter.get("/metadata/bulk",async(req,res)=>{
     }
   
 })
+
+userRouter.get("/maps",userMiddleware,async(req,res)=>{
+    const userId=req.userID;
+
+    try{
+        const maps=await client.map.findMany();
+        if(maps.length>0)
+      {  res.status(200).json({
+            mapIDs: maps.map(map=>({
+                mapID:map.mapID,
+                name:map.name,
+                width:map.width,
+                height:map.height,
+                thumbnail:map.thumbnail
+            }))
+    })
+        }
+    }
+    catch(e){
+
+        res.status(400).json({
+            "message":"No maps found"
+        })
+    }
+})

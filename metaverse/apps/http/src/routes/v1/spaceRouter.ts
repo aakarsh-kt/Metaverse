@@ -44,7 +44,7 @@ spaceRouter.use("/create",userMiddleware,async(req,res)=>{
     }
     else{
         try{
-            console.log(parsedData.data.mapID);
+           
             if(!parsedData.data.mapID)
            {
                
