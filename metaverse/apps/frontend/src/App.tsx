@@ -8,6 +8,7 @@ import Lounge from "./pages/lounge";
 import ArenaMap from "./pages/arenaMap";
 import ArenaSpace from "./pages/arenaSpace";
 import CreateSpace from "./pages/createSpace";
+import JoinSpace from "./pages/joinSpace";
 const App=()=>{
   return (
       <BrowserRouter>
@@ -20,6 +21,7 @@ const App=()=>{
         <Route path="/arenaMap" element={<ArenaMap/>}/>
         <Route path="/arenaSpace" element={<ArenaSpace/>}/>
         <Route path="/createSpace" element={<CreateSpace/>}/>
+        <Route path="/joinSpace" element={<JoinSpace/>}/>
       </Routes>
      </BrowserRouter>
   )

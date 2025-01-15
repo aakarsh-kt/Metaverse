@@ -2,7 +2,7 @@
 export default function Advertisement() {
    
     return (
-       <div className="flex flex-col justify-center items-center bg-slate-600 ">
+       <div className="flex flex-col justify-center items-center bg-slate-600 h-full p-2">
            <h1 className="text-6xl text-white font-bold  ">Why Link Lounge!</h1>
           <div className="flex flex-row justify-between  items-center">
             <div>
@@ -13,8 +13,8 @@ export default function Advertisement() {
                   Link Lounge is a place where you can link your workplace with your friends and colleagues. It is a place where you can share your workplace and collaborate with your colleagues.
               </h1>
             </div>
-            <div className="flex flex-col items-center justify-center">
-                <img src="/assets/advertisement.jpg" alt="logo" className="w-1/2 rounded-full " />
+            <div className="flex flex-col items-center justify-center max-h-full">
+                <img src="/assets/advertisement.jpg" alt="logo" className="w-2/5 rounded-full " />
             </div>
           </div>
        </div>

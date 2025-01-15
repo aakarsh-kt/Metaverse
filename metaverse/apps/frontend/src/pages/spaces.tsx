@@ -53,6 +53,7 @@ const Spaces=()=>{
             <div className="flex  items-center justify-between gap-2 p-2">
                 <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/arenaSpace")}>Create Space</button>
             {admin &&  <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/arenaMap")}>Create Map</button>}
+            <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/joinSpace")}>Join Space</button>
             </div>
            {allspaces.length>0 &&
           <div className="flex flex-col items-center w-3/4 h-3/4 ">
