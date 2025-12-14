@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react";
 import { useRef } from "react";
 import Game from "../components/game";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import useAuthStore from "../stores/useAuthStore";
+import StatusBar from "../components/statusBar";
 // import jwt from "jsonwebtoken"; 
 // import { JWT_PASSWORD } from "../config";
 // import client from "@repo/db/client";
@@ -21,11 +22,11 @@ interface User {
 }
 const Lounge = () => {
   //   const navigate = useNavigate();
-  const location = useLocation();
+  // const location = useLocation();
   const token = useAuthStore((state) => state.token);
   const userID = useAuthStore((state) => state.userID);
   console.log(userID);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   // let decoded: { userID: string } | null = null;
   // if (token) {
   //   try {
@@ -36,7 +37,8 @@ const Lounge = () => {
   //   }
   // }
   // console.log(decoded?.userID);
-  const id = location.state?.id;
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get("spaceId");
   const [elements, setElements] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [ws, setWs] = useState<WebSocket>();
@@ -235,13 +237,13 @@ const Lounge = () => {
   //     }));
   //   }
 
-  async function handleLeave() {
-    if (!ws) return;
-    // Notify server (optional if onclose handles it, but good for explicit leave)
-    // ws.close() naturally triggers removal on server usually
-    ws.close();
-    navigate('/space');
-  }
+  // async function handleLeave() {
+  //   if (!ws) return;
+  //   // Notify server (optional if onclose handles it, but good for explicit leave)
+  //   // ws.close() naturally triggers removal on server usually
+  //   ws.close();
+  //   navigate('/space');
+  // }
 
   useEffect(() => {
     getElements();
@@ -264,22 +266,23 @@ const Lounge = () => {
           )}
         </div>
         <div >
-          <button onClick={() => { console.log(players) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+          {/* <button onClick={() => { console.log(players) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
             Click me
           </button>
           <button onClick={() => { alert(`Total Users: ${players.length}`) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
             Show Total Users in the map
-          </button>
-          <button onClick={() => { handleLeave() }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+          </button> */}
+          {/* <button onClick={() => { handleLeave() }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
             Leave
-          </button>
-          <button onClick={() => {
+          </button> */}
+          <StatusBar />
+          {/* <button onClick={() => {
             ws?.send(JSON.stringify({
               type: "log-active-players",
             }));
           }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
             Send to websocket to log total number of active players
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

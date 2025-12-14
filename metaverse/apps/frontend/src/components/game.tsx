@@ -60,7 +60,9 @@ class GameScene extends Phaser.Scene {
     if (!this.textures.exists('player')) {
       this.load.spritesheet("player", "/assets/image.png", { frameWidth: 32, frameHeight: 48 });
     }
-
+    if (!this.textures.exists('carpet')) {
+      this.load.image("carpet", "/assets/carpet.jpg");
+    }
     this.load.once('complete', () => {
       this.assetsLoaded = true;
     });
@@ -131,7 +133,10 @@ class GameScene extends Phaser.Scene {
       for (let col = 0; col < gridCols; col++) {
         const x = col * gridSize + gridSize / 2;
         const y = row * gridSize + gridSize / 2;
-        this.add.image(x, y, "square").setScale(0.25);
+        // if((row+col)%2)
+        // this.add.image(x, y, "square").setScale(0.25);
+        // else
+        this.add.image(x, y, "carpet").setScale(0.01);
       }
     }
     if (this.gameWs) {

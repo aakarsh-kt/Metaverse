@@ -1,136 +1,170 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import useAuthStore from "../stores/useAuthStore";
 import Navbar from "../components/navbar";
 import { useNavigate } from "react-router-dom";
 
-interface Maps{
-    mapID:string;
-    name:string;
-    width:number;
-    height:number;
-    thumbnail:string;
+interface MapTemplate {
+    mapID: string;
+    name: string;
+    width: number;
+    height: number;
+    thumbnail: string;
 }
 
 const ArenaSpace = () => {
+    const token = useAuthStore((state) => state.token);
+    const [maps, setMaps] = useState<MapTemplate[]>([]);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
-    const token =useAuthStore((state)=>state.token);
-    const [maps,setMaps]=React.useState<Maps[]>([]);
-    const navigate=useNavigate();
-    const [name,setName]=React.useState("");
-    const [width,setWidth]=React.useState(0);
-    const [height,setHeight]=React.useState(0);
-    async function getMaps(){
-        const res=await fetch("http://localhost:3000/api/v1/user/maps",{
-            method:"GET",
-            headers:{
-                "Content-Type":"application/json",
-                "authorization":`Bearer ${token}`
-            }
-          }).then(res=>res.json())
-          console.log(res)
-          setMaps(res.mapIDs);
-    }
-    useEffect(()=>{
+    // Creation State
+    const [selectedMap, setSelectedMap] = useState<MapTemplate | null>(null);
+    const [spaceName, setSpaceName] = useState("");
+    const [isCustom, setIsCustom] = useState(false);
+    const [customWidth, setCustomWidth] = useState(20);
+    const [customHeight, setCustomHeight] = useState(20);
+
+    useEffect(() => {
         getMaps();
-    },[]);
-    const [show,setShow]=React.useState(false);
-    async function createWithMap(name:string, id:string){
-        try{ const res=await fetch("http://localhost:3000/api/v1/space/create",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "authorization":`Bearer ${token}`
-            },
-            body:JSON.stringify({
-                name:name,
-                dimensions:`123x123`,
-                mapID:id
-            })
-        }).then(res=>res.json())
-        console.log(res)
-        navigate(`/createSpace?spaceID=${res.spaceID}`);
-    }
-        catch(e){
-            alert("Some error occured");
-            console.log(e);
-        }
-  
-    }
-    
-    async function createWithoutMap(name:string, width:number, height:number){
-           
-        try{    
-            const res=await fetch("http://localhost:3000/api/v1/space/create",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "authorization":`Bearer ${token}`
-            },
-            body:JSON.stringify({
-                name:name,
-                dimensions:`${width}x${height}`
-            })
-        }).then(res=>res.json())
-        console.log(res);
-        navigate(`/createSpace?spaceID=${res.spaceID}`);
-    }
-        catch(e){
-            alert("Some error occured");
-            console.log(e);
+    }, []);
+
+    async function getMaps() {
+        try {
+            const res = await fetch("http://localhost:3000/api/v1/user/maps", {
+                method: "GET",
+                headers: { "authorization": `Bearer ${token}` }
+            }).then(res => res.json());
+            setMaps(res.mapIDs || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
         }
     }
-    const [mapid,setMapid]=React.useState({
-        mapid:"",
-        index:-1
-    });
+
+    async function handleCreate() {
+        if (!spaceName) return alert("Please name your space");
+
+        const payload = isCustom
+            ? { name: spaceName, dimensions: `${customWidth}x${customHeight}` }
+            : { name: spaceName, dimensions: `${selectedMap?.width}x${selectedMap?.height}`, mapID: selectedMap?.mapID };
+
+        try {
+            const res = await fetch("http://localhost:3000/api/v1/space/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            }).then(res => res.json());
+
+            if (res.spaceID) {
+                navigate(`/createSpace?spaceID=${res.spaceID}`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Failed to create space");
+        }
+    }
+
     return (
-        <div>
-            <Navbar/>   
-        <div className="flex flex-col items-center justify-center">
-            <h1 className="text-2xl ">Choose a Space</h1>
-            
-               {mapid.mapid=="" && <div className="bg-slate-400` flex flex-wrap items-center gap-2 p-2  ">
-                   { maps.map((m,index)=>(
-                        <div key={m.mapID} className="flex flex-col items-center gap-2  p-2 bg-slate-400 rounded-sm cursor-pointer" onClick={()=>setMapid({mapid:m.mapID,index:index})}>
-                            <h2>{m.name}</h2>
-                            <img src={m.thumbnail} alt="logo" className="w-20 rounded-md" />
+        <div className="min-h-screen bg-gray-950 text-white font-sans">
+            <Navbar />
+
+            <div className="max-w-7xl mx-auto px-6 py-12">
+                <div className="text-center mb-16">
+                    <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent mb-4">
+                        Choose Your Universe
+                    </h1>
+                    <p className="text-xl text-gray-400">Select a template or start from scratch.</p>
+                </div>
+
+                {/* Templates Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {/* Create Custom Card */}
+                    <div
+                        onClick={() => { setSelectedMap(null); setIsCustom(true); setSpaceName(""); }}
+                        className={`
+                            group relative overflow-hidden rounded-2xl border-2 transition-all cursor-pointer h-80 flex flex-col items-center justify-center gap-4 bg-gray-900/50 backdrop-blur-sm
+                            ${isCustom ? "border-blue-500 ring-4 ring-blue-500/20" : "border-gray-800 hover:border-gray-600 hover:bg-gray-800"}
+                        `}
+                    >
+                        <div className="p-4 rounded-full bg-gray-800 group-hover:bg-blue-600/20 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-blue-400"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                        <h3 className="text-2xl font-semibold text-gray-200">Empty Void</h3>
+                        <p className="text-gray-500">Start with a blank canvas</p>
+                    </div>
+
+                    {/* Map Templates */}
+                    {maps.map((map) => (
+                        <div
+                            key={map.mapID}
+                            onClick={() => { setSelectedMap(map); setIsCustom(false); setSpaceName(map.name + " Instance"); }}
+                            className={`
+                                group relative overflow-hidden rounded-2xl border-2 transition-all cursor-pointer h-80
+                                ${selectedMap?.mapID === map.mapID ? "border-blue-500 ring-4 ring-blue-500/20" : "border-gray-800 hover:border-gray-600"}
+                            `}
+                        >
+                            {/* Image/Thumbnail */}
+                            <div className="absolute inset-0">
+                                <img src={map.thumbnail || "/assets/map-placeholder.png"} alt={map.name} className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent"></div>
+                            </div>
+
+                            <div className="absolute bottom-0 left-0 right-0 p-6">
+                                <h3 className="text-2xl font-bold text-white mb-1">{map.name}</h3>
+                                <p className="text-gray-400 text-sm flex items-center gap-2">
+                                    <span className="bg-gray-800 px-2 py-0.5 rounded text-xs">{map.width}x{map.height}</span>
+                                    <span>Grid Size</span>
+                                </p>
+                            </div>
                         </div>
                     ))}
-                </div> }
-                {
-                    mapid.mapid!=="" &&
-                    <div className="bg-slate-400` flex flex-col items-center gap-2 p-2  ">
-                        <div className="flex flex-col items-center gap-2  p-2 bg-slate-400 rounded-sm cursor-pointer" >
-                            <h2>{maps[mapid.index].name}</h2>
-                            <img src={maps[mapid.index].thumbnail} alt="logo" className="w-20 rounded-md" />
-                        </div>
-                        <input type="text" placeholder="Name" className=" p-2 rounded-md border-2 border-gray-400 focus:border-blue-500 focus:outline-none" onChange={(e)=>setName(e.target.value)} />  
-                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={()=>createWithMap(name,mapid.mapid)}>Create</button>
-                    </div>
-
-                }
-                <div className="flex flex-col items-center gap-2 p-2 bg">
-                    <h1 className="text-2xl">Or Create your own space</h1>
-                {!show &&     <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={()=>setShow(true)}>Create</button>  }          
-                        {show &&  <div className="flex flex-col items-center gap-2 p-2 bg">
-                        <input type="text" placeholder="Name" className=" p-2 rounded-md border-2 border-gray-400 focus:border-blue-500 focus:outline-none" onChange={(e)=>setName(e.target.value)} />
-                        <div className="flex items-center">
-                            <input type="number" placeholder="Width" className=" p-2 rounded-md border-2 border-gray-400 focus:border-blue-500 focus:outline-none" onChange={(e)=>setWidth(parseInt(e.target.value))} />
-                            <h3 className="text-white">
-                                x
-                                </h3>
-                                <input type="number" placeholder="Height" className=" p-2 rounded-md border-2 border-gray-400 focus:border-blue-500 focus:outline-none" onChange={(e)=>setHeight(parseInt(e.target.value))} />
-                          
-                                
-
-                        </div>
-                                <button className="bg-blue-500 text-white p-2 rounded-md" onClick={()=>createWithoutMap(name,width,height)} >Create</button>
-                    </div>
-                                }
                 </div>
-        </div>
-        
+            </div>
+
+            {/* Creation Modal (Bottom Sheet similar) */}
+            {(selectedMap || isCustom) && (
+                <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-6 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
+                    <div className="max-w-4xl mx-auto flex items-end gap-6">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-2">Space Name</label>
+                            <input
+                                type="text"
+                                value={spaceName}
+                                onChange={(e) => setSpaceName(e.target.value)}
+                                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                                placeholder="Name your new space..."
+                                autoFocus
+                            />
+                        </div>
+
+                        {isCustom && (
+                            <div className="flex gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Width</label>
+                                    <input type="number" value={customWidth} onChange={(e) => setCustomWidth(parseInt(e.target.value))} className="w-24 bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Height</label>
+                                    <input type="number" value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value))} className="w-24 bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleCreate}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-500/20 transition-all mb-[1px]"
+                        >
+                            Launch Space
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
-    }
+};
+
 export default ArenaSpace;
