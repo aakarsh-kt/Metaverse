@@ -24,6 +24,8 @@ class GameScene extends Phaser.Scene {
   private assetsLoaded: boolean = false;
   private userID: string | null = null;
   private playerSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  private lastSentGridX: number = -999;
+  private lastSentGridY: number = -999;
 
   constructor() {
     super({ key: "GameScene" });
@@ -65,8 +67,12 @@ class GameScene extends Phaser.Scene {
   }
 
   private sendToServer(x: number, y: number) {
-    if (!this.gameWs) return;
+    if (!this.gameWs) {
+      console.error("[GameScene] No WebSocket available to send move");
+      return;
+    }
 
+    console.log(`[GameScene] Sending move: grid=(${x}, ${y}), userID=${this.userID}`);
     this.gameWs.send(JSON.stringify({
       type: "move",
       payload: { x, y, userID: this.userID },
@@ -76,8 +82,35 @@ class GameScene extends Phaser.Scene {
   public updateLocation(userID: string, x: number, y: number) {
     const sprite = this.playerSprites.get(userID);
     if (sprite) {
-      sprite.setPosition(x * 50 + 25, y * 50 + 25);
+      console.log(`[GameScene] Moving sprite for ${userID} to grid=(${x}, ${y}), pixel=(${x * 50 + 25}, ${y * 50 + 25})`);
+      const targetX = x * 50 + 25;
+      const targetY = y * 50 + 25;
+      sprite.setPosition(targetX, targetY);
+    } else {
+      console.warn(`[GameScene] Sprite not found for userID: ${userID}. Available sprites:`, Array.from(this.playerSprites.keys()));
     }
+  }
+
+  public syncPlayers(players: { userID: string; avatarID: string; x: number; y: number }[]) {
+    // 1. Remove players who left
+    for (const [userID, sprite] of this.playerSprites) {
+      if (!players.find(p => p.userID === userID)) {
+        sprite.destroy();
+        this.playerSprites.delete(userID);
+      }
+    }
+
+    // 2. Add new players
+    players.forEach(player => {
+      if (player.userID !== this.userID && !this.playerSprites.has(player.userID)) {
+        const sprite = this.add.sprite(player.x * 50 + 25, player.y * 50 + 25, "player").setScale(0.5).setDepth(1);
+        this.playerSprites.set(player.userID, sprite);
+      }
+    });
+
+    // Note: We DO NOT update positions of existing players here.
+    // Movement is handled exclusively by WebSocket 'move' events to prevent React-induced ease-in/snap glitches.
+    // However, if we wanted to force-correct huge desyncs, we could do it here, but keeping it decoupled is better for smoothness.
   }
 
   create() {
@@ -102,22 +135,24 @@ class GameScene extends Phaser.Scene {
       }
     }
     if (this.gameWs) {
-      this.gameWs.onmessage = (message) => {
+      console.log("[GameScene] Setting up WebSocket message handler. WebSocket state:", this.gameWs.readyState);
+      const handleMessage = (message: MessageEvent) => {
+        console.log("[GameScene] *** HANDLER CALLED ***", message);
         const data = JSON.parse(message.data);
 
-        if (data.type !== 'movement-rejected') {
-          console.log(data);
-        }
+        console.log(`[GameScene] Received WebSocket message:`, data.type, data.payload);
 
         if (data.type === "move") {
-          console.log("Finally moving");
+          console.log(`[GameScene] Processing move event for userID=${data.payload.userID}`);
           this.updateLocation(data.payload.userID, data.payload.x, data.payload.y);
         }
-        if (data.type === "space-joined") {
-          console.log("New player joined");
-
+        else if (data.type === "movement-rejected") {
+          console.warn("[GameScene] Movement was rejected by server:", data.payload);
         }
-        if (data.type === "user-joined") {
+        else if (data.type === "space-joined") {
+          console.log("[GameScene] Space joined event");
+        }
+        else if (data.type === "user-joined") {
           console.log("New player joined");
           const newPlayer = data.payload;
           if (newPlayer.userID !== this.userID && !this.playerSprites.has(newPlayer.userID)) {
@@ -137,6 +172,15 @@ class GameScene extends Phaser.Scene {
           }
         }
       };
+
+      this.gameWs.addEventListener('message', handleMessage);
+
+      // Clean up event listener when scene is destroyed
+      this.events.on('destroy', () => {
+        this.gameWs?.removeEventListener('message', handleMessage);
+      });
+    } else {
+      console.error("[GameScene] No WebSocket available in create() - cannot set up message handler!");
     }
     this.load.start();
     // Add elements
@@ -165,6 +209,10 @@ class GameScene extends Phaser.Scene {
     const ogPlayer = this.gamePlayers.find(player => player.userID === this.userID)!;
     this.player = this.physics.add.sprite(ogPlayer.x * 50 + 25, ogPlayer.y * 50 + 25, "player").setDepth(1);
     this.player.setCollideWorldBounds(true);
+
+    // Initialize last sent grid position to spawn
+    this.lastSentGridX = ogPlayer.x;
+    this.lastSentGridY = ogPlayer.y;
 
     // Create animations only if they don't exist
     if (!this.anims.exists('left')) {
@@ -204,26 +252,43 @@ class GameScene extends Phaser.Scene {
     const speed = 200;
     this.player.setVelocity(0);
 
-    const updatePosition = () => {
-      const playerX = Math.floor(this.player.x / 50);
-      const playerY = Math.floor(this.player.y / 50);
-      this.sendToServer(playerX, playerY);
-    };
+    // Calculate current grid position
+    const currentGridX = Math.floor(this.player.x / 50);
+    const currentGridY = Math.floor(this.player.y / 50);
+
+    // Only send to server if grid position has changed
+    const shouldSendUpdate = (currentGridX !== this.lastSentGridX || currentGridY !== this.lastSentGridY);
 
     if (this.cursors.left.isDown) {
       this.player.setVelocityX(-speed);
       this.player.anims.play('left', true);
-      updatePosition();
+      if (shouldSendUpdate) {
+        this.sendToServer(currentGridX, currentGridY);
+        this.lastSentGridX = currentGridX;
+        this.lastSentGridY = currentGridY;
+      }
     } else if (this.cursors.right.isDown) {
       this.player.setVelocityX(speed);
       this.player.anims.play('right', true);
-      updatePosition();
+      if (shouldSendUpdate) {
+        this.sendToServer(currentGridX, currentGridY);
+        this.lastSentGridX = currentGridX;
+        this.lastSentGridY = currentGridY;
+      }
     } else if (this.cursors.up.isDown) {
       this.player.setVelocityY(-speed);
-      updatePosition();
+      if (shouldSendUpdate) {
+        this.sendToServer(currentGridX, currentGridY);
+        this.lastSentGridX = currentGridX;
+        this.lastSentGridY = currentGridY;
+      }
     } else if (this.cursors.down.isDown) {
       this.player.setVelocityY(speed);
-      updatePosition();
+      if (shouldSendUpdate) {
+        this.sendToServer(currentGridX, currentGridY);
+        this.lastSentGridX = currentGridX;
+        this.lastSentGridY = currentGridY;
+      }
     } else {
       this.player.anims.play('turn');
     }
@@ -265,15 +330,11 @@ const Game: React.FC<GameProps> = ({ elements, dimensions, ws, players, userID }
     };
   }, [elements, dimensions, ws, userID]);
 
-  // Update other players' positions when players array changes
+  // Sync players list (Add/Remove) without interfering with movement
   useEffect(() => {
     if (!sceneRef.current) return;
-    players.forEach(player => {
-      if (player.userID !== userID) {
-        sceneRef.current!.updateLocation(player.userID, player.x, player.y);
-      }
-    });
-  }, [players, userID]);
+    sceneRef.current.syncPlayers(players);
+  }, [players]);
 
   return <div ref={gameContainer} style={{ width: "100%", height: "100%" }} />;
 };

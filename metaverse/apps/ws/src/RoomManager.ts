@@ -2,12 +2,10 @@ import type { User } from "./User";
 import { OutgoingMessage } from "./types";
 
 export class RoomManager {
-    rooms: Map<string, User[]> = new Map();
-    static instance: RoomManager;
+    public rooms: Map<string, User[]> = new Map();
+    private static instance: RoomManager;
 
-    private constructor() {
-        this.rooms = new Map();
-    }
+    private constructor() {}
 
     static getInstance() {
         if (!this.instance) {
@@ -16,39 +14,44 @@ export class RoomManager {
         return this.instance;
     }
 
-    public removeUser(user: User, spaceId: string) {
-        if (!this.rooms.has(spaceId)) {
-            return;
-        }
-        this.rooms.set(spaceId, (this.rooms.get(spaceId)?.filter((u) => u.id !== user.id) ?? []));
-    }
-
     public addUser(spaceId: string, user: User) {
-        if (!this.rooms.has(spaceId)) {
-            // Create a new room if it doesn't exist
-            this.rooms.set(spaceId, [user]);
-            return;
-        }
-    
-        // Check if the user is already in the room
-        const existingUsers = this.rooms.get(spaceId) ?? [];
-        const userExists = existingUsers.some((u) => u.userId === user.userId);
-    
-        if (!userExists) {
-            // Only add the user if they are not already in the room
-            this.rooms.set(spaceId, [...existingUsers, user]);
-        }
-    }
-    
+        const room = this.rooms.get(spaceId) ?? [];
 
-    public broadcast(message: OutgoingMessage, user: User, roomId: string) {
-        if (!this.rooms.has(roomId)) {
-            return;
+        const exists = room.some(u => u.userId === user.userId);
+        if (exists) return;
+
+        this.rooms.set(spaceId, [...room, user]);
+        console.log(`User ${user.userId} joined space ${spaceId}`);
+    }
+
+    public removeUser(user: User, spaceId: string) {
+        const room = this.rooms.get(spaceId);
+        if (!room) return;
+
+        const updatedRoom = room.filter(u => u.userId !== user.userId);
+
+        if (updatedRoom.length === 0) {
+            this.rooms.delete(spaceId);
+            console.log(`Space ${spaceId} deleted (empty)`);
+        } else {
+            this.rooms.set(spaceId, updatedRoom);
         }
-        this.rooms.get(roomId)?.forEach((u) => {
-            if (u.id !== user.id) {
-                u.send(message);
+
+        console.log(`User ${user.userId} removed from space ${spaceId}`);
+    }
+
+    public broadcast(
+        message: OutgoingMessage,
+        sender: User,
+        spaceId: string
+    ) {
+        const room = this.rooms.get(spaceId);
+        if (!room) return;
+
+        for (const user of room) {
+            if (user.id !== sender.id) {
+                user.send(message);
             }
-        });
+        }
     }
 }

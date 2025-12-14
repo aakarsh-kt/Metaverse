@@ -14,13 +14,18 @@ interface Player {
   avatarID: string;
 
 }
+interface User {
+  userId: string;
+  x: number;
+  y: number;
+}
 const Lounge = () => {
   //   const navigate = useNavigate();
   const location = useLocation();
   const token = useAuthStore((state) => state.token);
   const userID = useAuthStore((state) => state.userID);
   console.log(userID);
-  const navigate=useNavigate();
+  const navigate = useNavigate();
   // let decoded: { userID: string } | null = null;
   // if (token) {
   //   try {
@@ -54,65 +59,78 @@ const Lounge = () => {
     setElements(elements.elements);
 
   }
-  async function handleInfo(users: string[], spawn: { x: number, y: number }) {
-    console.log("getting info");
-    console.log(spawn.x, spawn.y);
+  const activeUsersRef = useRef<Set<string>>(new Set());
 
-    const res = await fetch(`http://localhost:3000/api/v1/user/metadata/bulk?ids=${users}`, {
-      headers: {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${token}`,
-      },
-    });
+  // Use a ref for handleInfo to ensure we always use the latest logic/state references if needed, 
+  // though primarily we need it to access activeUsersRef which is stable.
+  async function handleInfo(users: { x: number, y: number, userId: string }[]) {
+    // console.log("getting info", users);
 
-    const data = await res.json();
+    // Trust the input users list. If backend sent them, they are likely valid.
+    // The previous "race condition" filter against activeUsersRef might have been too aggressive.
+    if (users.length === 0) return;
 
-    if (data && data.avatars) {
-      const updatedPlayers = data.avatars.map((avatar: Player) => ({
-        ...avatar,
-        x: spawn.x,
-        y: spawn.y,
-      }));
+    const userIds = users.map(u => u.userId).join(",");
 
-      // setPlayers((prevPlayers) => [...prevPlayers, ...updatedPlayers]);
-      setPlayers((prevPlayers) => getUniquePlayers([...prevPlayers, ...updatedPlayers]));
-      console.log("Updated players:", [...updatedPlayers]);
-    } else {
-      console.error("Failed to fetch player data or avatars are missing.");
+    try {
+      const res = await fetch(`http://localhost:3000/api/v1/user/metadata/bulk?ids=${userIds}`, {
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (data && data.avatars) {
+        setPlayers((prevPlayers) => {
+          const updatedPlayers = data.avatars
+            .map((avatar: Player) => {
+              const user = users.find(u => u.userId === avatar.userID);
+              if (!user) return null;
+
+              // Ensure we track this user as active now that we have confirmed data
+              activeUsersRef.current.add(user.userId);
+
+              return {
+                ...avatar,
+                x: user.x,
+                y: user.y,
+              };
+            })
+            .filter((p: Player | null): p is Player => p !== null);
+
+          return getUniquePlayers([...prevPlayers, ...updatedPlayers]);
+        });
+      }
+    } catch (e) {
+      console.error("Failed to fetch player data:", e);
     }
   }
+
+
   function getUniquePlayers(players: Player[]): Player[] {
     return players.filter(
       (player, index, self) =>
         index === self.findIndex((p) => p.userID === player.userID)
     );
   }
+
   useEffect(() => {
     console.log("Players updated:", players);
   }, [players]);
+
   const playersRef = useRef<Player[]>([]);
 
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
 
-  function updateLocation(x: number, y: number, userID: string) {
-    console.log(playersRef.current);
-    const updatedPlayers = playersRef.current.map(p => {
-      if (p.userID === userID) {
-        return { ...p, x, y };
-      }
-      return p;
-    });
-    // setPlayers(updatedPlayers);
-    setPlayers(getUniquePlayers(updatedPlayers));
-  }
-
 
 
   async function handleJoin() {
     const tempWs = new WebSocket("ws://localhost:3001");
-    setWs(tempWs); // State update is asynchronous, so don't rely on `ws` immediately.
+    setWs(tempWs);
 
     tempWs.onopen = () => {
       tempWs.send(
@@ -126,96 +144,109 @@ const Lounge = () => {
       );
     };
 
-    tempWs.onmessage = (msg) => {
-      // console.log(msg.data);
+    tempWs.addEventListener("message", (msg) => {
       const data = JSON.parse(msg.data);
-      console.log(data);
+      // console.log(data);
+
       if (data.type === "space-joined") {
-        console.log("player joined");
-        //only add the user if they are not already in the list
-        console.log(data);
-        if (players.find(p => p.userID === data.payload.userID)) {
-          return;
-        }
         console.log("Space joined", data.payload);
-        // setPlayers((prev)=>[...prev,data.payload.users]); // Update players
-        handleInfo(data.payload.users, data.payload.spawn);
+
+        // Update active users
+        data.payload.users.forEach((u: User) => activeUsersRef.current.add(u.userId));
+
+        // Add current user to active users
+        if (userID) {
+          activeUsersRef.current.add(userID);
+        }
+
+        const currentUser = userID ? {
+          userId: userID,
+          x: data.payload.spawn.x,
+          y: data.payload.spawn.y,
+        } : null;
+
+        const usersToFetch = currentUser
+          ? [...data.payload.users, currentUser]
+          : data.payload.users;
+
+        handleInfo(usersToFetch);
       }
       else if (data.type === "user-joined") {
-        console.log("user joined");
-        console.log("Hurray New User");
-        //only add the user if they are not already in the list
-        console.log(data);
-        if (players.find(p => p.userID === data.payload.userID)) {
+        console.log("User joined:", data.payload.userID);
+        const newUserId = data.payload.userID;
+
+        if (playersRef.current.find(p => p.userID === newUserId)) {
+          // console.log("User already in list (checked via ref), skipping");
           return;
         }
-        console.log("Space joined", data.payload);
-        // setPlayers((prev)=>[...prev,data.payload.users]); // Update players
-        handleInfo(data.payload.users, data.payload.spawn);
+
+        // Mark as active
+        activeUsersRef.current.add(newUserId);
+
+        handleInfo([{
+          userId: newUserId,
+          x: data.payload.x,
+          y: data.payload.y
+        }]);
       }
       else if (data.type === "move") {
-        // console.log(data.payload); // Log move payload
-        // console.log("Moving shite in lounge", data.payload)
-        // console.log("Moving shite in lounge", players)
-        updateLocation(data.payload.x, data.payload.y, data.payload.userID);
+        console.log("[React] Received move message:", data.payload);
+        // Handled by GameScene directly
       }
-      else if (data.type === "leave") {
-        console.log("leaving")
-        setPlayers(prevPlayers => prevPlayers.filter(player => player.userID !== data.payload.userID))
-      }
-      else if( data.type === "user-left") {
-        console.log("User left")
+      else if (data.type === "user-left") {
+        console.log("User left:", data.payload.userID);
+        const leftUserId = data.payload.userID;
 
-        setPlayers(prevPlayers => prevPlayers.filter(player => player.userID !== data.payload.userID))
+        // Mark as inactive immediately
+        activeUsersRef.current.delete(leftUserId);
+
+        setPlayers(prevPlayers => prevPlayers.filter(player => player.userID !== leftUserId));
       }
-    };
+    });
 
     tempWs.onclose = () => {
-  console.log("WebSocket closed");
-  setPlayers(prev =>
-    prev.filter(player => player.userID !== userID)
-  );
-};
-
-    
+      console.log("WebSocket closed");
+      // Optional: Clear activeUsersRef?
+      activeUsersRef.current.clear();
+      // Keep own user?
+      //   setPlayers(prev =>
+      //     prev.filter(player => player.userID !== userID)
+      //   );
+    };
   }
+
+  // Cleanup effect
   useEffect(() => {
-  return () => {
-    if (ws?.readyState === WebSocket.OPEN) {
-      ws.close();
-    }
-  };
-}, [ws]);
+    return () => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [ws]);
 
-  
-  async function broadCastMessage() {
-    ws?.send(JSON.stringify({
-      type: "space-joined",
-      payload: {
-        spaceID: id,
-        token: token,
-      },
-    }));
-  }
+
+  //   async function broadCastMessage() {
+  //     ws?.send(JSON.stringify({
+  //       type: "space-joined",
+  //       payload: {
+  //         spaceID: id,
+  //         token: token,
+  //       },
+  //     }));
+  //   }
+
   async function handleLeave() {
-  if (!ws) return;
-
-  ws.send(JSON.stringify({
-    type: "user-left",
-    payload: {
-      userID,
-      spaceID: id,
-    },
-  }));
-
-  ws.close(); // IMPORTANT
-  navigate('/space');
-}
+    if (!ws) return;
+    // Notify server (optional if onclose handles it, but good for explicit leave)
+    // ws.close() naturally triggers removal on server usually
+    ws.close();
+    navigate('/space');
+  }
 
   useEffect(() => {
     getElements();
     handleJoin();
-    broadCastMessage();
+    // broadCastMessage();
   }, [])
   console.log(players?.length)
   return (
@@ -232,15 +263,24 @@ const Lounge = () => {
             />
           )}
         </div>
-        <button onClick={() => { console.log(players) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-          Click me
-        </button>
-        <button onClick={() => { alert(`Total Users: ${players.length}`) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-          Show Total Users in the map
-        </button>
-        <button onClick={() => { handleLeave() }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-          Leave
-        </button>
+        <div >
+          <button onClick={() => { console.log(players) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+            Click me
+          </button>
+          <button onClick={() => { alert(`Total Users: ${players.length}`) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+            Show Total Users in the map
+          </button>
+          <button onClick={() => { handleLeave() }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+            Leave
+          </button>
+          <button onClick={() => {
+            ws?.send(JSON.stringify({
+              type: "log-active-players",
+            }));
+          }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+            Send to websocket to log total number of active players
+          </button>
+        </div>
       </div>
     </div>
   );
