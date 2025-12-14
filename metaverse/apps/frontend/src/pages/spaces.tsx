@@ -50,12 +50,12 @@ const Spaces=()=>{
     return(
         <div className="flex flex-col items-center justify-start bg-slate-500 max-w-screen h-screen  ">
             <div className=""><Navbar/></div>
-            <div className="flex  items-center justify-between gap-2 p-2">
+            <div className="flex items-center justify-between gap-2 p-2 ">
                 <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/arenaSpace")}>Create Space</button>
             {admin &&  <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/arenaMap")}>Create Map</button>}
             <button className="bg-orange-400 p-2 rounded-md" onClick={()=>navigate("/joinSpace")}>Join Space</button>
             </div>
-           {allspaces.length>0 &&
+           {allspaces && allspaces.length>0 &&
           <div className="flex flex-col items-center w-3/4 h-3/4 ">
               
                 <h1 className="text-white text-2xl m-2">Your Spaces</h1>
@@ -67,13 +67,10 @@ const Spaces=()=>{
                             <h2>{s.name}</h2>
                             <h2>{s.thumbnail}</h2>
                             <h2>{s.dimensions}</h2>
-              
                         </div>
-                    // <h1 key={s.spaceID}>{s.spaceID}</h1>
                    ))}
               </div>
-          </div>
-           
+          </div>  
            }
         </div>
     )

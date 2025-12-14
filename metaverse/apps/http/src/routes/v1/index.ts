@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken"
 import client from "@repo/db/client";
 import { JWT_PASSWORD } from "../../config";
 import {hash,compare} from "../../scrypt"
-
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { adminRouter } from "./adminRouter";
 import { adminMiddleware } from "../../middleware/admin";
 router.get("/health",async(req , res)=>{
@@ -15,6 +15,15 @@ router.get("/health",async(req , res)=>{
         message: "Connection to the HTTP server successful"
     })
 })
+router.use("/proxy-image", createProxyMiddleware({
+    target: 'https://encrypted-tbn0.gstatic.com', // Target server URL
+    changeOrigin: true, // This makes the proxy request appear as though it is coming from your server
+    pathRewrite: {
+        '^/proxy-image': '', // Rewriting the path for the proxy
+    },
+}));
+
+
 router.post("/signup",async (req,res)=>{
 
     console.log("Signing up");
@@ -90,7 +99,8 @@ router.post("/signin",async(req,res)=>{
                 role:user.role
             },JWT_PASSWORD)
             res.status(200).json({
-                token
+                token,
+                userID:user.id
             })
         }
         catch(e){

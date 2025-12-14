@@ -117,41 +117,41 @@ spaceRouter.use("/create",userMiddleware,async(req,res)=>{
     }
   
 })
-spaceRouter.post("/join",userMiddleware,async(req,res)=>{
-    const {spaceID}=req.body;
-    try{
-        const space=await client.space.findUnique({
-            where:{
-                spaceID:spaceID
-            }
-        })
-        if(!space){
-            res.status(400).json({
-                message:"Invalid space id"
-            })
-            return
-        }
-        const user=await client.user.findUnique({
-            where:{
-                id:req.userID
-            }
-        })
-        if(!user){
-            res.status(400).json({
-                message:"Invalid user id"
-            })
-            return
-        }
+// spaceRouter.post("/join",userMiddleware,async(req,res)=>{
+//     const {spaceID}=req.body;
+//     try{
+//         const space=await client.space.findUnique({
+//             where:{
+//                 spaceID:spaceID
+//             }
+//         })
+//         if(!space){
+//             res.status(400).json({
+//                 message:"Invalid space id"
+//             })
+//             return
+//         }
+//         const user=await client.user.findUnique({
+//             where:{
+//                 id:req.userID
+//             }
+//         })
+//         if(!user){
+//             res.status(400).json({
+//                 message:"Invalid user id"
+//             })
+//             return
+//         }
        
-        return
-    }
-    catch(e){
-        res.status(400).json({
-            message:"Joining space failed"
-        })
-        return
-    }
-})
+//         return
+//     }
+//     catch(e){
+//         res.status(400).json({
+//             message:"Joining space failed"
+//         })
+//         return
+//     }
+// })
 spaceRouter.get("/element/all",async(req,res)=>{
     
 

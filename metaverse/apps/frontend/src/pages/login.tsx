@@ -7,6 +7,7 @@ const Login=()=>{
       const [username,setUsername]=useState("");
       const [password,setPassword]=useState("");
       const setToken = useAuthStore((state) => state.setToken);
+      const setUserID = useAuthStore((state) => state.setUserID);
       async function handleSubmit(){
           event?.preventDefault();
           interface Payload{
@@ -35,6 +36,7 @@ const Login=()=>{
     
           if(stat==200){
               setToken(response.token);
+              setUserID(response.userID!);
               navigate(`/`);
           }
           else{

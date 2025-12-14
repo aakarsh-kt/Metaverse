@@ -12,8 +12,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@repo/db": "*",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/ws": "^8.5.13",
-    "ws": "^1.0.0",
-    "@repo/db": "*"
+    "esbuild": "^0.24.2",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^1.0.0"
   }
 }

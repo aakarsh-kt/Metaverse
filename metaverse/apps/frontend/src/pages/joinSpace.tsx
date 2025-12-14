@@ -1,22 +1,29 @@
 import { useState } from "react";
 import Navbar from "../components/navbar";
 import useAuthStore from "../stores/useAuthStore";
+import { useNavigate } from "react-router-dom";
 
 const JoinSpace = () => {
+    const navigate=useNavigate();
     const token = useAuthStore((state) => state.token);
     const [spaceID,setSpaceID]=useState("");
     async function handleJoin(){
-        const res=await fetch("http://localhost:3000/api/v1/space/join",{
-            method:"POST",
+        const res=await fetch(`http://localhost:3000/api/v1/space/${spaceID}`,{
+            method:"GET",
             headers:{
                 "Content-Type":"application/json",
-                "authorization":`Bearer ${token}`
+                authorization:`Bearer ${token}`
             },
-            body:JSON.stringify({
-                spaceID:spaceID
-            })
         }).then(res=>res.json())
         console.log(res)
+        if(res.message=="Invalid space id")
+        {
+            alert("Invalid space id")
+            return
+        }
+        navigate("/lounge", { state: { id: spaceID  } });
+      
+       
     }
     return (
         <div className="flex flex-col items-center h-screen">
