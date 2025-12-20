@@ -90,8 +90,8 @@ const CreateSpace = () => {
           "authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          elementId: item.id,
-          spaceId: spaceID,
+          elementID: item.id,
+          spaceID: spaceID,
           x: x,
           y: y
         })
@@ -99,6 +99,7 @@ const CreateSpace = () => {
 
       if (res.ok) {
         getSpace();
+        setSelectedItem(null);
       } else {
         console.error("Failed to add element");
       }
@@ -116,10 +117,34 @@ const CreateSpace = () => {
           "authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          id: id
+          elementID: id
         })
       });
       if (res.ok) getSpace();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleToggleStatic(spaceElementID: string, nextStatic: boolean) {
+    try {
+      const res = await fetch("http://localhost:3000/api/v1/space/element/static", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          spaceElementID,
+          static: nextStatic,
+        })
+      });
+      if (res.ok) {
+        getSpace();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j?.message ?? "Failed to update element");
+      }
     } catch (e) {
       console.error(e);
     }
@@ -171,14 +196,14 @@ const CreateSpace = () => {
           </div>
 
           {/* Interactive Grid */}
-          <div className="flex-1 overflow-auto p-12 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-gray-950 custom-scrollbar">
+          <div className="flex-1 overflow-auto p-12 flex bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-gray-950 custom-scrollbar">
             {loading ? (
-              <div className="flex flex-col items-center gap-4">
+              <div className="m-auto flex flex-col items-center gap-4">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 <span className="text-gray-500 font-medium">Loading Universe...</span>
               </div>
             ) : (
-              <div className="relative shadow-2xl shadow-blue-900/20 border border-gray-800 rounded-lg overflow-hidden ring-1 ring-white/5 bg-gray-900/90 backdrop-blur-md">
+              <div className="m-auto relative shadow-2xl shadow-blue-900/20 border border-gray-800 rounded-lg overflow-hidden ring-1 ring-white/5 bg-gray-900/90 backdrop-blur-md">
                 <div
                   className="grid"
                   style={{
@@ -218,6 +243,19 @@ const CreateSpace = () => {
                               alt="placed-obj"
                               className="w-full h-full object-contain p-0.5 select-none pointer-events-none"
                             />
+                            <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-1 p-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleStatic(existingElement.id, !existingElement.element.static);
+                                }}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${existingElement.element.static ? "bg-green-600/20 border-green-600/40 text-green-300" : "bg-gray-800/60 border-gray-700 text-gray-200"}`}
+                                title={existingElement.element.static ? "Collision ON (blocking)" : "Collision OFF (walkable)"}
+                              >
+                                {existingElement.element.static ? "Blocking" : "Walkable"}
+                              </button>
+                            </div>
                           </div>
                         )}
 

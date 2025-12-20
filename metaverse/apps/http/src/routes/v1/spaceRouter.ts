@@ -117,89 +117,13 @@ spaceRouter.use("/create", userMiddleware, async (req, res) => {
         }
     }
 
-}
-  
 })
 
 // === Saved Spaces Endpoints ===
 
-spaceRouter.get("/saved", userMiddleware, async (req, res) => {
-    try {
-        const user = await client.user.findUnique({
-            where: { id: req.userID },
-            include: {
-                savedSpaces: true
-            }
-        });
-
-        if (!user) {
-            res.status(404).json({ message: "User not found" });
-            return;
-        }
-
-        res.status(200).json({
-            spaces: user.savedSpaces.map(space => ({
-                spaceID: space.spaceID,
-                name: space.name,
-                dimensions: `${space.width}x${space.height}`,
-                thumbnail: space.thumbnail
-            }))
-        });
-    } catch (e) {
-        console.error(e);
-        res.status(400).json({ message: "Failed to fetch saved spaces" });
-    }
-});
-
-spaceRouter.post("/save", userMiddleware, async (req, res) => {
-    const { spaceID } = req.body;
-    if (!spaceID) {
-        res.status(400).json({ message: "Space ID required" });
-        return;
-    }
-
-    try {
-        // Connect the space to the user's savedSpaces list
-        await client.user.update({
-            where: { id: req.userID },
-            data: {
-                savedSpaces: {
-                    connect: { spaceID: spaceID }
-                }
-            }
-        });
-
-        res.status(200).json({ message: "Space saved to collection" });
-    } catch (e) {
-        console.error(e);
-        // P2025 = Record to delete does not exist (if testing delete), but for connect it might fail if space doesn't exist
-        res.status(400).json({ message: "Failed to save space. Check ID validity." });
-    }
-});
-
-spaceRouter.delete("/save", userMiddleware, async (req, res) => {
-    const { spaceID } = req.body;
-    if (!spaceID) {
-        res.status(400).json({ message: "Space ID required" });
-        return;
-    }
-
-    try {
-        await client.user.update({
-            where: { id: req.userID },
-            data: {
-                savedSpaces: {
-                    disconnect: { spaceID: spaceID }
-                }
-            }
-        });
-
-        res.status(200).json({ message: "Space removed from collection" });
-    } catch (e) {
-        console.error(e);
-        res.status(400).json({ message: "Failed to remove space" });
-    }
-});
+// === Saved Spaces Endpoints ===
+// NOTE: This file currently doesn't compile against the Prisma schema in this repo if we use `savedSpaces`.
+// If you want saved spaces, we should add the proper Prisma relation first (User <-> Space), then re-enable.
 
 // spaceRouter.post("/join",userMiddleware,async(req,res)=>{
 //     const {spaceID}=req.body;
@@ -248,7 +172,7 @@ spaceRouter.get("/element/all", async (req, res) => {
                 imageUrl: e.imageUrl,
                 width: e.width,
                 height: e.height,
-                // static:e.static
+                static: (e as any)["static"]
             }))
         })
 
@@ -292,7 +216,7 @@ spaceRouter.get("/:spaceID", userMiddleware, async (req, res) => {
                     imageUrl: e.element.imageUrl,
                     width: e.element.width,
                     height: e.element.height,
-                    // static: e.element.static
+                    static: (e.element as any)["static"]
                 },
                 x: e.x,
                 y: e.y
@@ -306,7 +230,14 @@ spaceRouter.get("/:spaceID", userMiddleware, async (req, res) => {
     }
 })
 spaceRouter.delete("/element", userMiddleware, async (req, res) => {
-    const parsedData = DeleteElementSchema.safeParse(req.body);
+    // Some clients historically sent `{ id }` instead of `{ elementID }`.
+    const normalizedBody = (req.body && typeof req.body === "object")
+        ? ({
+            elementID: (req.body as any).elementID ?? (req.body as any).id,
+        })
+        : req.body;
+
+    const parsedData = DeleteElementSchema.safeParse(normalizedBody);
     if (!parsedData.success) {
         res.status(400).json({
             message: "Invalid element data"
@@ -314,6 +245,20 @@ spaceRouter.delete("/element", userMiddleware, async (req, res) => {
         return
     }
     try {
+        // Only the creator of the space can modify its elements.
+        const existing = await client.spaceElement.findUnique({
+            where: { id: parsedData.data.elementID },
+            select: { id: true, space: { select: { creatorID: true } } },
+        });
+        if (!existing) {
+            res.status(404).json({ message: "Element not found" });
+            return;
+        }
+        if (existing.space.creatorID !== req.userID) {
+            res.status(403).json({ message: "Not allowed" });
+            return;
+        }
+
         await client.spaceElement.delete({
             where: {
                 id: parsedData.data.elementID
@@ -402,3 +347,40 @@ spaceRouter.post("/element", userMiddleware, async (req, res) => {
     }
 
 })
+
+// Toggle collision/walkable for a placed element in a space.
+// This updates the underlying Element.static flag (shared across all usages of that elementID).
+// Contract: { spaceElementID: string, static: boolean }
+spaceRouter.put("/element/static", userMiddleware, async (req, res) => {
+    const body = req.body as any;
+    const spaceElementID = body?.spaceElementID;
+    const isStatic = body?.static;
+    if (typeof spaceElementID !== "string" || typeof isStatic !== "boolean") {
+        res.status(400).json({ message: "Invalid data" });
+        return;
+    }
+
+    try {
+        const se = await client.spaceElement.findUnique({
+            where: { id: spaceElementID },
+            select: { id: true, elementID: true, space: { select: { creatorID: true } } },
+        });
+        if (!se) {
+            res.status(404).json({ message: "Element not found" });
+            return;
+        }
+        if (se.space.creatorID !== req.userID) {
+            res.status(403).json({ message: "Not allowed" });
+            return;
+        }
+
+        await client.element.update({
+            where: { elementID: se.elementID },
+            data: { static: isStatic },
+        });
+
+        res.status(200).json({ message: "Updated" });
+    } catch (e) {
+        res.status(400).json({ message: "Update failed" });
+    }
+});

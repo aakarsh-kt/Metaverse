@@ -57,6 +57,30 @@ export class User {
                 console.log(`Active users in ${this.spaceId}:`, users?.map(u => u.userId));
                 return;
             }
+
+            if (data.type === "direct-message" ||
+                data.type === "call-request" ||
+                data.type === "call-response" ||
+                data.type === "webrtc-signal") {
+
+                const { to, ...payload } = data.payload;
+                const room = this.roomManager.rooms.get(this.spaceId ?? "");
+                const targetUser = room?.find(u => u.userId === to);
+
+                if (targetUser) {
+                    console.log(`[User ${this.userId}] Forwarding ${data.type} to ${to}`);
+                    targetUser.send({
+                        type: data.type,
+                        payload: {
+                            from: this.userId,
+                            ...payload
+                        }
+                    });
+                } else {
+                    console.warn(`[User ${this.userId}] Target user ${to} not found in room ${this.spaceId} for ${data.type}`);
+                }
+                return;
+            }
         });
 
         this.ws.on("close", () => {

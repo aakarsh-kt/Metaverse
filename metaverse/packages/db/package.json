@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -b"
+  "build": "tsc -b",
+  "seed:office": "node ./src/seed_office_map.js",
+  "seed:avatars": "node ./src/seed_avatars.js"
   },
   "exports":{
     "./client":"./src/index.ts"

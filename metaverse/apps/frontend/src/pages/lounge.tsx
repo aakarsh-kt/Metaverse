@@ -1,8 +1,8 @@
 // import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRef } from "react";
 import Game from "../components/game";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import useAuthStore from "../stores/useAuthStore";
 import StatusBar from "../components/statusBar";
 // import jwt from "jsonwebtoken"; 
@@ -12,7 +12,9 @@ interface Player {
   x: number;
   y: number;
   userID: string;
+  username?: string;
   avatarID: string;
+  avatarUrl?: string;
 
 }
 interface User {
@@ -45,7 +47,7 @@ const Lounge = () => {
   const [players, setPlayers] = useState<Player[]>([]);
 
 
-  async function getElements() {
+  const getElements = useCallback(async () => {
 
     const elements = await fetch(`http://localhost:3000/api/v1/space/${id}`, {
       headers: {
@@ -55,17 +57,17 @@ const Lounge = () => {
     }).then(res => res.json())
 
     setDimensions({
-      width: elements.dimensions.split("x")[0],
-      height: elements.dimensions.split("x")[1]
+      width: parseInt(elements.dimensions.split("x")[0]),
+      height: parseInt(elements.dimensions.split("x")[1])
     })
     setElements(elements.elements);
 
-  }
+  }, [id, token]);
   const activeUsersRef = useRef<Set<string>>(new Set());
 
   // Use a ref for handleInfo to ensure we always use the latest logic/state references if needed, 
   // though primarily we need it to access activeUsersRef which is stable.
-  async function handleInfo(users: { x: number, y: number, userId: string }[]) {
+  const handleInfo = useCallback(async (users: { x: number, y: number, userId: string }[]) => {
     // console.log("getting info", users);
 
     // Trust the input users list. If backend sent them, they are likely valid.
@@ -87,7 +89,7 @@ const Lounge = () => {
       if (data && data.avatars) {
         setPlayers((prevPlayers) => {
           const updatedPlayers = data.avatars
-            .map((avatar: Player) => {
+            .map((avatar: Partial<Player> & { userID: string; username?: string }) => {
               const user = users.find(u => u.userId === avatar.userID);
               if (!user) return null;
 
@@ -96,6 +98,8 @@ const Lounge = () => {
 
               return {
                 ...avatar,
+                // Keep GameProps happy; also preserves existing behavior if backend didn't send avatarID.
+                avatarID: avatar.avatarID ?? avatar.avatarUrl ?? "",
                 x: user.x,
                 y: user.y,
               };
@@ -108,7 +112,7 @@ const Lounge = () => {
     } catch (e) {
       console.error("Failed to fetch player data:", e);
     }
-  }
+  }, [token]);
 
 
   function getUniquePlayers(players: Player[]): Player[] {
@@ -130,7 +134,7 @@ const Lounge = () => {
 
 
 
-  async function handleJoin() {
+  const handleJoin = useCallback(async () => {
     const tempWs = new WebSocket("ws://localhost:3001");
     setWs(tempWs);
 
@@ -215,7 +219,7 @@ const Lounge = () => {
       //     prev.filter(player => player.userID !== userID)
       //   );
     };
-  }
+  }, [id, token, userID, handleInfo]);
 
   // Cleanup effect
   useEffect(() => {
@@ -249,42 +253,25 @@ const Lounge = () => {
     getElements();
     handleJoin();
     // broadCastMessage();
-  }, [])
+  }, [getElements, handleJoin])
   console.log(players?.length)
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <div className="flex flex-col items-center">
-        <div className="flex flex-col items-center justify-center">
-          {players.length > 0 && (
-            <Game
-              elements={elements}
-              dimensions={dimensions}
-              ws={ws}
-              players={players}
-              userID={userID}
-            />
-          )}
-        </div>
-        <div >
-          {/* <button onClick={() => { console.log(players) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-            Click me
-          </button>
-          <button onClick={() => { alert(`Total Users: ${players.length}`) }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-            Show Total Users in the map
-          </button> */}
-          {/* <button onClick={() => { handleLeave() }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-            Leave
-          </button> */}
-          <StatusBar />
-          {/* <button onClick={() => {
-            ws?.send(JSON.stringify({
-              type: "log-active-players",
-            }));
-          }} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-            Send to websocket to log total number of active players
-          </button> */}
-        </div>
+    <div className="fixed inset-0 w-full h-full bg-gray-950 overflow-hidden">
+      {/* Game Filling the Full Screen */}
+      <div className="absolute inset-0 w-full h-full">
+        {players.length > 0 && (
+          <Game
+            elements={elements}
+            dimensions={dimensions}
+            ws={ws}
+            players={players}
+            userID={userID}
+          />
+        )}
       </div>
+
+      {/* UI Overlay */}
+      <StatusBar />
     </div>
   );
 };

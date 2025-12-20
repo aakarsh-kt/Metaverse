@@ -1,0 +1,243 @@
+{
+  "source": "/assets/office_furniture.jpg",
+  "items": [
+    {
+      "name": "office_00",
+      "url": "/assets/elements/office_workplace_set/office_00.png",
+      "width": 769,
+      "height": 1470,
+      "static": true
+    },
+    {
+      "name": "office_01",
+      "url": "/assets/elements/office_workplace_set/office_01.png",
+      "width": 1000,
+      "height": 949,
+      "static": true
+    },
+    {
+      "name": "office_02",
+      "url": "/assets/elements/office_workplace_set/office_02.png",
+      "width": 976,
+      "height": 945,
+      "static": true
+    },
+    {
+      "name": "office_03",
+      "url": "/assets/elements/office_workplace_set/office_03.png",
+      "width": 894,
+      "height": 846,
+      "static": true
+    },
+    {
+      "name": "office_04",
+      "url": "/assets/elements/office_workplace_set/office_04.png",
+      "width": 977,
+      "height": 946,
+      "static": true
+    },
+    {
+      "name": "office_05",
+      "url": "/assets/elements/office_workplace_set/office_05.png",
+      "width": 736,
+      "height": 964,
+      "static": true
+    },
+    {
+      "name": "office_06",
+      "url": "/assets/elements/office_workplace_set/office_06.png",
+      "width": 929,
+      "height": 959,
+      "static": true
+    },
+    {
+      "name": "office_07",
+      "url": "/assets/elements/office_workplace_set/office_07.png",
+      "width": 524,
+      "height": 813,
+      "static": true
+    },
+    {
+      "name": "office_08",
+      "url": "/assets/elements/office_workplace_set/office_08.png",
+      "width": 612,
+      "height": 541,
+      "static": true
+    },
+    {
+      "name": "office_09",
+      "url": "/assets/elements/office_workplace_set/office_09.png",
+      "width": 494,
+      "height": 727,
+      "static": true
+    },
+    {
+      "name": "office_10",
+      "url": "/assets/elements/office_workplace_set/office_10.png",
+      "width": 399,
+      "height": 552,
+      "static": true
+    },
+    {
+      "name": "office_11",
+      "url": "/assets/elements/office_workplace_set/office_11.png",
+      "width": 398,
+      "height": 554,
+      "static": true
+    },
+    {
+      "name": "office_12",
+      "url": "/assets/elements/office_workplace_set/office_12.png",
+      "width": 437,
+      "height": 799,
+      "static": true
+    },
+    {
+      "name": "office_13",
+      "url": "/assets/elements/office_workplace_set/office_13.png",
+      "width": 397,
+      "height": 549,
+      "static": true
+    },
+    {
+      "name": "office_14",
+      "url": "/assets/elements/office_workplace_set/office_14.png",
+      "width": 393,
+      "height": 562,
+      "static": true
+    },
+    {
+      "name": "office_15",
+      "url": "/assets/elements/office_workplace_set/office_15.png",
+      "width": 416,
+      "height": 789,
+      "static": true
+    },
+    {
+      "name": "office_16",
+      "url": "/assets/elements/office_workplace_set/office_16.png",
+      "width": 599,
+      "height": 602,
+      "static": true
+    },
+    {
+      "name": "office_17",
+      "url": "/assets/elements/office_workplace_set/office_17.png",
+      "width": 453,
+      "height": 719,
+      "static": true
+    },
+    {
+      "name": "office_18",
+      "url": "/assets/elements/office_workplace_set/office_18.png",
+      "width": 615,
+      "height": 688,
+      "static": true
+    },
+    {
+      "name": "office_19",
+      "url": "/assets/elements/office_workplace_set/office_19.png",
+      "width": 693,
+      "height": 681,
+      "static": true
+    },
+    {
+      "name": "office_20",
+      "url": "/assets/elements/office_workplace_set/office_20.png",
+      "width": 363,
+      "height": 497,
+      "static": true
+    },
+    {
+      "name": "office_21",
+      "url": "/assets/elements/office_workplace_set/office_21.png",
+      "width": 425,
+      "height": 497,
+      "static": true
+    },
+    {
+      "name": "office_22",
+      "url": "/assets/elements/office_workplace_set/office_22.png",
+      "width": 426,
+      "height": 538,
+      "static": true
+    },
+    {
+      "name": "office_23",
+      "url": "/assets/elements/office_workplace_set/office_23.png",
+      "width": 256,
+      "height": 605,
+      "static": true
+    },
+    {
+      "name": "office_24",
+      "url": "/assets/elements/office_workplace_set/office_24.png",
+      "width": 491,
+      "height": 400,
+      "static": true
+    },
+    {
+      "name": "office_25",
+      "url": "/assets/elements/office_workplace_set/office_25.png",
+      "width": 308,
+      "height": 381,
+      "static": true
+    },
+    {
+      "name": "office_26",
+      "url": "/assets/elements/office_workplace_set/office_26.png",
+      "width": 472,
+      "height": 284,
+      "static": true
+    },
+    {
+      "name": "office_27",
+      "url": "/assets/elements/office_workplace_set/office_27.png",
+      "width": 555,
+      "height": 475,
+      "static": true
+    },
+    {
+      "name": "office_28",
+      "url": "/assets/elements/office_workplace_set/office_28.png",
+      "width": 479,
+      "height": 283,
+      "static": true
+    },
+    {
+      "name": "office_29",
+      "url": "/assets/elements/office_workplace_set/office_29.png",
+      "width": 491,
+      "height": 293,
+      "static": true
+    },
+    {
+      "name": "office_30",
+      "url": "/assets/elements/office_workplace_set/office_30.png",
+      "width": 193,
+      "height": 353,
+      "static": true
+    },
+    {
+      "name": "office_31",
+      "url": "/assets/elements/office_workplace_set/office_31.png",
+      "width": 222,
+      "height": 303,
+      "static": true
+    },
+    {
+      "name": "office_32",
+      "url": "/assets/elements/office_workplace_set/office_32.png",
+      "width": 164,
+      "height": 203,
+      "static": true
+    },
+    {
+      "name": "office_33",
+      "url": "/assets/elements/office_workplace_set/office_33.png",
+      "width": 114,
+      "height": 80,
+      "static": true
+    }
+  ]
+}

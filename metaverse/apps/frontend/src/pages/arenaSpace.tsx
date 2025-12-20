@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useAuthStore from "../stores/useAuthStore";
 import Navbar from "../components/navbar";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,7 @@ interface MapTemplate {
 const ArenaSpace = () => {
     const token = useAuthStore((state) => state.token);
     const [maps, setMaps] = useState<MapTemplate[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const navigate = useNavigate();
 
     // Creation State
@@ -24,11 +24,7 @@ const ArenaSpace = () => {
     const [customWidth, setCustomWidth] = useState(20);
     const [customHeight, setCustomHeight] = useState(20);
 
-    useEffect(() => {
-        getMaps();
-    }, []);
-
-    async function getMaps() {
+    const getMaps = useCallback(async () => {
         try {
             const res = await fetch("http://localhost:3000/api/v1/user/maps", {
                 method: "GET",
@@ -40,7 +36,11 @@ const ArenaSpace = () => {
         } finally {
             setLoading(false);
         }
-    }
+    }, [token]);
+
+    useEffect(() => {
+        getMaps();
+    }, [getMaps]);
 
     async function handleCreate() {
         if (!spaceName) return alert("Please name your space");

@@ -125,7 +125,7 @@ const CreateElement = () => {
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                    {elements.map((element, index) => (
+                    {elements.map((element) => (
                         <div
                             key={element.id}
                             className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 relative group hover:border-gray-700 transition-all shadow-xl"

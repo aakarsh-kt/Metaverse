@@ -24,9 +24,9 @@ const StatusBar = () => {
 
     const toggleButtonClass = (isActive: boolean, isDisabled: boolean = false) =>
         `p-3 rounded-full transition-all duration-200 ease-in-out border-2 ${isDisabled
-            ? "bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed opacity-50"
+            ? "bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/50 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
             : isActive
-                ? "bg-gray-800 border-gray-700 hover:bg-gray-700 text-white shadow-lg"
+                ? "bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white shadow-lg"
                 : "bg-red-500 border-red-600 hover:bg-red-600 text-white shadow-red-500/50 shadow-lg"
         }`;
 
@@ -50,13 +50,13 @@ const StatusBar = () => {
             {showStatusMenu && (
                 <div
                     ref={statusMenuRef}
-                    className="absolute bottom-full left-0 mb-4 bg-gray-900/95 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl p-2 min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200"
+                    className="absolute bottom-full left-0 mb-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl p-2 min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200"
                 >
                     {["Online", "Away", "Busy", "In a Call"].map((s) => (
                         <button
                             key={s}
                             onClick={() => { setStatus(s as any); setShowStatusMenu(false); }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors"
+                            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                         >
                             <span className={`w-2.5 h-2.5 rounded-full ${getStatusColor(s)}`}></span>
                             {s}
@@ -65,11 +65,11 @@ const StatusBar = () => {
                 </div>
             )}
 
-            <div className="flex items-center gap-4 px-8 py-4 bg-gray-900/90 backdrop-blur-md border border-gray-800 rounded-2xl shadow-2xl">
+            <div className="flex items-center gap-4 px-8 py-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl transition-colors">
 
                 {/* Status Button */}
                 <button
-                    className="flex items-center gap-2 p-3 pr-4 rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-all text-white mr-2"
+                    className="flex items-center gap-2 p-3 pr-4 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all text-gray-900 dark:text-white mr-2"
                     onClick={() => setShowStatusMenu(!showStatusMenu)}
                     title="Change Status"
                 >
@@ -80,7 +80,7 @@ const StatusBar = () => {
                                 <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
                             </svg>
                         </div>
-                        <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-gray-800 ${getStatusColor(status)}`}></span>
+                        <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-800 ${getStatusColor(status)}`}></span>
                     </div>
                     <span className="text-sm font-medium">{status}</span>
                 </button>
@@ -95,7 +95,7 @@ const StatusBar = () => {
                     <img
                         src={micOn ? "/assets/mic.svg" : "/assets/mic-off.svg"}
                         alt="Mic"
-                        className={`w-6 h-6 invert ${lock ? "opacity-50" : ""}`}
+                        className={`w-6 h-6 dark:invert ${micOn ? "invert-0 dark:invert" : "invert-0"} ${lock ? "opacity-50" : ""}`}
                     />
                 </button>
 
@@ -109,7 +109,7 @@ const StatusBar = () => {
                     <img
                         src={cameraOn ? "/assets/camera.svg" : "/assets/camera-off.svg"}
                         alt="Camera"
-                        className={`w-6 h-6 invert ${lock ? "opacity-50" : ""}`}
+                        className={`w-6 h-6 dark:invert ${cameraOn ? "invert-0 dark:invert" : "invert-0"} ${lock ? "opacity-50" : ""}`}
                     />
                 </button>
 
@@ -123,18 +123,18 @@ const StatusBar = () => {
                     <img
                         src={speakerOn ? "/assets/speaker.svg" : "/assets/speaker-off.svg"}
                         alt="Speaker"
-                        className={`w-6 h-6 invert ${lock ? "opacity-50" : ""}`}
+                        className={`w-6 h-6 dark:invert ${speakerOn ? "invert-0 dark:invert" : "invert-0"} ${lock ? "opacity-50" : ""}`}
                     />
                 </button>
 
                 {/* Divider */}
-                <div className="w-px h-8 bg-gray-700 mx-2"></div>
+                <div className="w-px h-8 bg-gray-200 dark:bg-gray-700 mx-2"></div>
 
                 {/* Lock Setting */}
                 <button
                     className={`p-3 rounded-full transition-all duration-200 border-2 ${lock
-                            ? "bg-yellow-500/20 border-yellow-500 text-yellow-500"
-                            : "bg-gray-800 border-gray-700 hover:bg-gray-700 text-white"
+                        ? "bg-yellow-500/20 border-yellow-500 text-yellow-500"
+                        : "bg-gray-800 border-gray-700 hover:bg-gray-700 text-white"
                         }`}
                     onClick={() => setLock(!lock)}
                     title={lock ? "Unlock Settings" : "Lock Settings"}
@@ -142,12 +142,12 @@ const StatusBar = () => {
                     <img
                         src={lock ? "/assets/lock.svg" : "/assets/unlock.svg"}
                         alt="Lock"
-                        className={`w-6 h-6 ${lock ? "" : "invert"}`}
+                        className={`w-6 h-6 ${lock ? "" : "dark:invert"}`}
                     />
                 </button>
 
                 {/* Divider */}
-                <div className="w-px h-8 bg-gray-700 mx-2"></div>
+                <div className="w-px h-8 bg-gray-200 dark:bg-gray-700 mx-2"></div>
 
                 {/* Leave Button */}
                 <button

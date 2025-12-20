@@ -1,0 +1,180 @@
+{
+  "source": "/assets/furniture.png",
+  "items": [
+    {
+      "name": "table",
+      "url": "/assets/elements/furniture_sheet/table.png",
+      "width": 119,
+      "height": 117,
+      "static": true
+    },
+    {
+      "name": "chair",
+      "url": "/assets/elements/furniture_sheet/chair.png",
+      "width": 119,
+      "height": 117,
+      "static": true
+    },
+    {
+      "name": "desk",
+      "url": "/assets/elements/furniture_sheet/desk.png",
+      "width": 119,
+      "height": 117,
+      "static": true
+    },
+    {
+      "name": "office_chair",
+      "url": "/assets/elements/furniture_sheet/office_chair.png",
+      "width": 119,
+      "height": 117,
+      "static": true
+    },
+    {
+      "name": "cradle",
+      "url": "/assets/elements/furniture_sheet/cradle.png",
+      "width": 119,
+      "height": 117,
+      "static": true
+    },
+    {
+      "name": "bookcase",
+      "url": "/assets/elements/furniture_sheet/bookcase.png",
+      "width": 65,
+      "height": 101,
+      "static": true
+    },
+    {
+      "name": "sofa",
+      "url": "/assets/elements/furniture_sheet/sofa.png",
+      "width": 91,
+      "height": 95,
+      "static": true
+    },
+    {
+      "name": "changing_table",
+      "url": "/assets/elements/furniture_sheet/changing_table.png",
+      "width": 77,
+      "height": 95,
+      "static": true
+    },
+    {
+      "name": "coffee_table",
+      "url": "/assets/elements/furniture_sheet/coffee_table.png",
+      "width": 84,
+      "height": 91,
+      "static": true
+    },
+    {
+      "name": "double_decker_bed",
+      "url": "/assets/elements/furniture_sheet/double_decker_bed.png",
+      "width": 90,
+      "height": 99,
+      "static": true
+    },
+    {
+      "name": "bed",
+      "url": "/assets/elements/furniture_sheet/bed.png",
+      "width": 94,
+      "height": 96,
+      "static": true
+    },
+    {
+      "name": "night_table",
+      "url": "/assets/elements/furniture_sheet/night_table.png",
+      "width": 68,
+      "height": 92,
+      "static": true
+    },
+    {
+      "name": "dresser",
+      "url": "/assets/elements/furniture_sheet/dresser.png",
+      "width": 79,
+      "height": 90,
+      "static": true
+    },
+    {
+      "name": "wardrobe",
+      "url": "/assets/elements/furniture_sheet/wardrobe.png",
+      "width": 78,
+      "height": 100,
+      "static": true
+    },
+    {
+      "name": "floor_vase",
+      "url": "/assets/elements/furniture_sheet/floor_vase.png",
+      "width": 61,
+      "height": 99,
+      "static": true
+    },
+    {
+      "name": "bath",
+      "url": "/assets/elements/furniture_sheet/bath.png",
+      "width": 89,
+      "height": 93,
+      "static": true
+    },
+    {
+      "name": "toilet",
+      "url": "/assets/elements/furniture_sheet/toilet.png",
+      "width": 87,
+      "height": 100,
+      "static": true
+    },
+    {
+      "name": "bidet",
+      "url": "/assets/elements/furniture_sheet/bidet.png",
+      "width": 72,
+      "height": 89,
+      "static": true
+    },
+    {
+      "name": "bathroom_cabinet",
+      "url": "/assets/elements/furniture_sheet/bathroom_cabinet.png",
+      "width": 83,
+      "height": 100,
+      "static": true
+    },
+    {
+      "name": "washbasin",
+      "url": "/assets/elements/furniture_sheet/washbasin.png",
+      "width": 60,
+      "height": 90,
+      "static": true
+    },
+    {
+      "name": "drawer",
+      "url": "/assets/elements/furniture_sheet/drawer.png",
+      "width": 119,
+      "height": 112,
+      "static": true
+    },
+    {
+      "name": "refrigerator",
+      "url": "/assets/elements/furniture_sheet/refrigerator.png",
+      "width": 119,
+      "height": 111,
+      "static": true
+    },
+    {
+      "name": "cooker",
+      "url": "/assets/elements/furniture_sheet/cooker.png",
+      "width": 119,
+      "height": 111,
+      "static": true
+    },
+    {
+      "name": "washer",
+      "url": "/assets/elements/furniture_sheet/washer.png",
+      "width": 119,
+      "height": 110,
+      "static": true
+    },
+    {
+      "name": "shower",
+      "url": "/assets/elements/furniture_sheet/shower.png",
+      "width": 119,
+      "height": 110,
+      "static": true
+    }
+  ]
+}
