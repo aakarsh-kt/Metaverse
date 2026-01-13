@@ -24,6 +24,7 @@ class GameScene extends Phaser.Scene {
   private proximityAuras: Map<string, Phaser.GameObjects.Arc> = new Map();
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasd!: { [key: string]: Phaser.Input.Keyboard.Key };
   private gameElements: GameProps['elements'] = [];
   private gameDimensions: GameProps['dimensions'] = { width: 0, height: 0 };
   private gamePlayers: GameProps['players'] = [];
@@ -31,6 +32,10 @@ class GameScene extends Phaser.Scene {
   private assetsLoaded: boolean = false;
   private userID: string | null = null;
   private playerSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  private playerNames: Map<string, Phaser.GameObjects.Text> = new Map();
+  private playerBubbles: Map<string, Phaser.GameObjects.Container> = new Map();
+  private localPlayerName!: Phaser.GameObjects.Text;
+  private remoteTweens: Map<string, Phaser.Tweens.Tween> = new Map();
   private playerSpriteKey: Map<string, string> = new Map();
   private loadedPlayerSheets: Set<string> = new Set();
   private failedPlayerSheets: Set<string> = new Set();
@@ -181,11 +186,157 @@ class GameScene extends Phaser.Scene {
     }));
   }
 
+  public sendChat(message: string) {
+    if (!this.gameWs || !message.trim()) return;
+    this.gameWs.send(JSON.stringify({
+      type: "chat",
+      payload: { message }
+    }));
+    this.showChatBubble(this.userID!, message);
+  }
+
+  public sendEmote(emote: string) {
+    if (!this.gameWs) return;
+    this.gameWs.send(JSON.stringify({
+      type: "emote",
+      payload: { emote }
+    }));
+    this.showEmote(this.userID!, emote);
+  }
+
+  public showChatBubble(userID: string, message: string) {
+    const sprite = userID === this.userID ? this.player : this.playerSprites.get(userID);
+    if (!sprite) return;
+
+    // Destroy existing bubble for this user
+    this.playerBubbles.get(userID)?.destroy();
+
+    const bubblePadding = 10;
+
+    const content = this.add.text(0, 0, message, {
+      fontSize: '12px',
+      color: '#000000',
+      align: 'center',
+      wordWrap: { width: 150 }
+    });
+
+    const bWidth = content.width + bubblePadding * 2;
+    const bHeight = content.height + bubblePadding * 2;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0xffffff, 0.9);
+    bg.fillRoundedRect(-bWidth / 2, -bHeight - 55, bWidth, bHeight, 10);
+    bg.lineStyle(2, 0x60a5fa, 1);
+    bg.strokeRoundedRect(-bWidth / 2, -bHeight - 55, bWidth, bHeight, 10);
+
+    // Triangle at bottom
+    bg.beginPath();
+    bg.moveTo(-5, -55);
+    bg.lineTo(5, -55);
+    bg.lineTo(0, -45);
+    bg.closePath();
+    bg.fillPath();
+    bg.strokePath();
+
+    content.setPosition(-content.width / 2, -bHeight - 55 + bubblePadding);
+
+    const container = this.add.container(sprite.x, sprite.y, [bg, content]);
+    container.setDepth(10);
+    this.playerBubbles.set(userID, container);
+
+    this.tweens.add({
+      targets: container,
+      alpha: { from: 1, to: 0 },
+      y: container.y - 20,
+      duration: 3000,
+      onComplete: () => {
+        container.destroy();
+        if (this.playerBubbles.get(userID) === container) {
+          this.playerBubbles.delete(userID);
+        }
+      }
+    });
+  }
+
+  public showEmote(userID: string, emote: string) {
+    const sprite = userID === this.userID ? this.player : this.playerSprites.get(userID);
+    if (!sprite) return;
+
+    const text = this.add.text(sprite.x, sprite.y - 80, emote, { fontSize: '40px' })
+      .setOrigin(0.5)
+      .setDepth(11);
+
+    this.tweens.add({
+      targets: text,
+      y: text.y - 100,
+      alpha: 0,
+      scale: 1.5,
+      duration: 1500,
+      ease: 'Back.easeOut',
+      onComplete: () => text.destroy()
+    });
+  }
+
   public updateLocation(userID: string, x: number, y: number) {
     const sprite = this.playerSprites.get(userID);
-    if (sprite) {
-      sprite.setPosition(x * 50 + 25, y * 50 + 25);
+    if (!sprite) return;
+
+    const targetX = x * 50 + 25;
+    const targetY = y * 50 + 25;
+
+    // Stop existing tween
+    const existing = this.remoteTweens.get(userID);
+    if (existing) {
+      existing.stop();
+      this.remoteTweens.delete(userID);
     }
+
+    const sheetKey = this.playerSpriteKey.get(userID) || "player_default";
+    const dx = targetX - sprite.x;
+    const dy = targetY - sprite.y;
+
+    // Movement animation logic
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0) sprite.anims.play(`${sheetKey}_right`, true);
+        else sprite.anims.play(`${sheetKey}_left`, true);
+      } else {
+        // Vertical movement: alternate or use last anim
+        if (dy > 0) sprite.anims.play(`${sheetKey}_right`, true); // "Step" right
+        else sprite.anims.play(`${sheetKey}_left`, true); // "Step" left
+      }
+
+      // Procedural bobbing for remote players
+      const bounce = Math.abs(Math.sin(this.time.now * 0.015)) * 2;
+      sprite.setY(targetY - bounce);
+    }
+
+    const tween = this.tweens.add({
+      targets: sprite,
+      x: targetX,
+      y: targetY,
+      duration: 300,
+      ease: 'Power1',
+      onComplete: () => {
+        sprite.anims.play(`${sheetKey}_turn`, true);
+        sprite.setY(targetY); // Reset bounce
+        this.remoteTweens.delete(userID);
+      }
+    });
+
+    // Move Name Tag
+    const nameTag = this.playerNames.get(userID);
+    if (nameTag) {
+      this.tweens.add({
+        targets: nameTag,
+        x: targetX,
+        y: targetY - 45,
+        duration: 300,
+        ease: 'Power1'
+      });
+    }
+
+    this.remoteTweens.set(userID, tween);
   }
 
   public syncPlayers(players: { userID: string; avatarID: string; avatarUrl?: string; x: number; y: number }[]) {
@@ -194,6 +345,11 @@ class GameScene extends Phaser.Scene {
       if (!players.find(p => p.userID === userID)) {
         sprite.destroy();
         this.playerSprites.delete(userID);
+        const tween = this.remoteTweens.get(userID);
+        if (tween) {
+          tween.stop();
+          this.remoteTweens.delete(userID);
+        }
       }
     }
     // Add new players
@@ -204,7 +360,7 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  private addOtherPlayer(player: { userID: string; avatarID?: string; avatarUrl?: string; x: number; y: number }) {
+  private addOtherPlayer(player: { userID: string; username?: string; avatarID?: string; avatarUrl?: string; x: number; y: number }) {
     const sheetKey = this.ensurePlayerSheetLoaded(player);
     this.ensurePlayerAnims(sheetKey);
 
@@ -236,6 +392,16 @@ class GameScene extends Phaser.Scene {
 
     this.playerSprites.set(player.userID, sprite);
     this.playerSpriteKey.set(player.userID, sheetKey);
+
+    // Add Name Tag
+    const nameTag = this.add.text(player.x * 50 + 25, player.y * 50 - 20, player.username || "Guest", {
+      fontSize: "12px",
+      fontFamily: "Inter, sans-serif",
+      color: "#ffffff",
+      stroke: "#000000",
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(2);
+    this.playerNames.set(player.userID, nameTag);
   }
 
   async create() {
@@ -284,49 +450,33 @@ class GameScene extends Phaser.Scene {
     this.scale.on('resize', updateCameraBounds);
     this.events.on('zoom-changed', updateCameraBounds); // Custom check if zoom ever changes dynamically
 
-    // Floor tile: gives the world a consistent surface. (Also replaces grid look.)
-    const floorKey = "floor_tile_generic";
-    if (!this.textures.exists(floorKey)) {
-      // Reuse an existing floor asset if present.
-      // NOTE: `/assets/elements/floor_0.png` is currently not a valid PNG in this repo (can't be decoded),
-      // so we use a known-good fallback image.
-      this.load.image(floorKey, "/assets/carpet.jpg");
-      await this.loadQueuedAssets();
-
-      // If the file exists but failed to decode/process, fall back to a procedural tile.
-      if (!this.textures.exists(floorKey)) {
-        const g = this.add.graphics({ x: 0, y: 0 });
-        g.setVisible(false);
-        g.fillStyle(0x1a2330, 1);
-        g.fillRect(0, 0, 64, 64);
-        g.fillStyle(0x151d29, 1);
-        g.fillRect(0, 0, 32, 32);
-        g.fillRect(32, 32, 32, 32);
-        g.generateTexture(floorKey, 64, 64);
-        g.destroy();
-      }
-    }
-    if (this.textures.exists(floorKey)) {
-      const floor = this.add.tileSprite(0, 0, mapWidth, mapHeight, floorKey);
-      floor.setOrigin(0, 0);
-      floor.setDepth(0);
-      floor.setAlpha(0.9);
-    }
+    // Background is now a flat solid color defined in updateCameraBounds for better focus on elements.
 
     if (this.gameWs) {
       const handleMessage = (message: MessageEvent) => {
         const data = JSON.parse(message.data);
         if (data.type === "move") {
           this.updateLocation(data.payload.userID, data.payload.x, data.payload.y);
+        } else if (data.type === "chat") {
+          this.showChatBubble(data.payload.from, data.payload.message);
+          this.game.events.emit('new-chat-message', { from: data.payload.from, text: data.payload.message });
+        } else if (data.type === "emote") {
+          this.showEmote(data.payload.from, data.payload.emote);
         } else if (data.type === "user-joined") {
           const p = data.payload;
           if (p.userID !== this.userID && !this.playerSprites.has(p.userID)) {
             this.addOtherPlayer(p);
           }
         } else if (data.type === "user-left") {
-          const sprite = this.playerSprites.get(data.payload.userID);
+          const uID = data.payload.userID;
+          const sprite = this.playerSprites.get(uID);
           sprite?.destroy();
-          this.playerSprites.delete(data.payload.userID);
+          this.playerSprites.delete(uID);
+          const tween = this.remoteTweens.get(uID);
+          if (tween) {
+            tween.stop();
+            this.remoteTweens.delete(uID);
+          }
         }
       };
       this.gameWs.addEventListener('message', handleMessage);
@@ -430,6 +580,16 @@ class GameScene extends Phaser.Scene {
     this.playerSpriteKey.set(this.userID ?? "", resolvedMySheet);
     this.player.setCollideWorldBounds(true);
 
+    // Add Local Name Tag
+    this.localPlayerName = this.add.text(this.player.x, this.player.y - 45, myPlayer.username || "You", {
+      fontSize: "12px",
+      fontFamily: "Inter, sans-serif",
+      color: "#60a5fa",
+      stroke: "#000000",
+      strokeThickness: 3,
+      fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(2);
+
     if (this.staticColliders) {
       this.physics.add.collider(this.player, this.staticColliders);
     }
@@ -439,7 +599,23 @@ class GameScene extends Phaser.Scene {
     // Per-avatar anims are created lazily via ensurePlayerAnims.
     this.cameras.main.startFollow(this.player);
     this.cameras.main.setZoom(1.2);
+
+    // Smooth Zoom
+    this.input.on('wheel', (_pointer: any, _gameObjects: any, _deltaX: number, deltaY: number) => {
+      const zoom = this.cameras.main.zoom;
+      const newZoom = Phaser.Math.Clamp(zoom - deltaY * 0.001, 0.5, 3);
+
+      this.tweens.add({
+        targets: this.cameras.main,
+        zoom: newZoom,
+        duration: 200,
+        ease: 'Power2',
+        onUpdate: () => updateCameraBounds()
+      });
+    });
+
     this.cursors = this.input.keyboard!.createCursorKeys();
+    this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as { [key: string]: Phaser.Input.Keyboard.Key };
   }
 
   update() {
@@ -481,22 +657,37 @@ class GameScene extends Phaser.Scene {
     const rightAnim = `${mySheet}_right`;
     const turnAnim = `${mySheet}_turn`;
 
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.wasd.A.isDown) {
       this.player.setVelocityX(-speed);
       this.player.anims.play(leftAnim, true);
       if (shouldSend) { this.sendToServer(cx, cy); this.lastSentGridX = cx; this.lastSentGridY = cy; }
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.wasd.D.isDown) {
       this.player.setVelocityX(speed);
       this.player.anims.play(rightAnim, true);
       if (shouldSend) { this.sendToServer(cx, cy); this.lastSentGridX = cx; this.lastSentGridY = cy; }
-    } else if (this.cursors.up.isDown) {
+    } else if (this.cursors.up.isDown || this.wasd.W.isDown) {
       this.player.setVelocityY(-speed);
+      this.player.anims.play(leftAnim, true); // Play walk anim for vertical
       if (shouldSend) { this.sendToServer(cx, cy); this.lastSentGridX = cx; this.lastSentGridY = cy; }
-    } else if (this.cursors.down.isDown) {
+    } else if (this.cursors.down.isDown || this.wasd.S.isDown) {
       this.player.setVelocityY(speed);
+      this.player.anims.play(rightAnim, true); // Play walk anim for vertical
       if (shouldSend) { this.sendToServer(cx, cy); this.lastSentGridX = cx; this.lastSentGridY = cy; }
     } else {
       this.player.anims.play(turnAnim);
+    }
+
+    // Procedural Bounce & Name Tag Update
+    const isMoving = this.player.body.velocity.x !== 0 || this.player.body.velocity.y !== 0;
+    if (isMoving) {
+      const bob = Math.abs(Math.sin(this.time.now * 0.015)) * 4;
+      this.player.setDisplayOrigin(this.player.width / 2, (this.player.height / 2) + bob);
+    } else {
+      this.player.setDisplayOrigin(this.player.width / 2, this.player.height / 2);
+    }
+
+    if (this.localPlayerName) {
+      this.localPlayerName.setPosition(this.player.x, this.player.y - 45);
     }
   }
 }
@@ -645,6 +836,80 @@ const ActiveCall = ({
   );
 };
 
+const EmoteMenu = ({ onSelect, onClose }: { onSelect: (e: string) => void, onClose: () => void }) => {
+  const emotes = ["👋", "❤️", "🔥", "😂", "😮", "🤔", "👎", "✌️"];
+  return (
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-900 shadow-2xl rounded-full p-4 border border-blue-500/30 flex gap-4 backdrop-blur-xl z-[100] animate-in zoom-in duration-200">
+      {emotes.map(e => (
+        <button
+          key={e}
+          onClick={() => { onSelect(e); onClose(); }}
+          className="text-4xl hover:scale-125 transition-transform duration-100 p-2"
+        >
+          {e}
+        </button>
+      ))}
+      <button onClick={onClose} className="absolute -top-4 -right-4 bg-gray-800 text-gray-400 rounded-full w-8 h-8 flex items-center justify-center border border-gray-700">✕</button>
+    </div>
+  );
+};
+
+const GlobalChatSidebar = ({ messages, onSend, onClose, getDisplayName }: { messages: ChatMessage[], onSend: (text: string) => void, onClose: () => void, getDisplayName: (id: string) => string }) => {
+  const [msg, setMsg] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  return (
+    <div className="absolute left-0 top-0 bottom-0 w-80 bg-gray-950/80 backdrop-blur-3xl border-r border-gray-800 z-50 flex flex-col animate-in slide-in-from-left duration-300">
+      <div className="p-6 border-b border-gray-800 bg-gray-900/50">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Global Comms</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">✕</button>
+        </div>
+        <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-1 font-bold">Encrypted Nexus Channel</p>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+        {messages.map((m, i) => (
+          <div key={i} className={`flex flex-col ${m.from === 'me' ? 'items-end' : 'items-start'}`}>
+            <span className="text-[10px] font-black text-gray-600 mb-1 px-1">
+              {m.from === 'me' ? 'YOU' : getDisplayName(m.from).toUpperCase()}
+            </span>
+            <div className={`px-4 py-2 rounded-2xl text-sm max-w-[90%] break-words shadow-lg ${m.from === 'me' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-800 text-gray-300 rounded-tl-none'}`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 bg-gray-900/50 border-t border-gray-800">
+        <div className="relative group">
+          <input
+            autoFocus
+            className="w-full bg-gray-950 border border-gray-700 group-focus-within:border-blue-500 rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all placeholder:text-gray-600"
+            value={msg}
+            onChange={e => setMsg(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && msg.trim()) {
+                onSend(msg);
+                setMsg("");
+              }
+              e.stopPropagation(); // Don't move character while typing
+            }}
+            placeholder="Broadcast a message..."
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-600 group-focus-within:text-blue-500">
+            ENTER
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Game: React.FC<GameProps> = ({ elements, dimensions, ws, players, userID }) => {
   const gameContainer = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GameScene | null>(null);
@@ -653,8 +918,13 @@ const Game: React.FC<GameProps> = ({ elements, dimensions, ws, players, userID }
 
   // Chat State
   const [chatOpen, setChatOpen] = useState(false);
+  const [globalChatOpen, setGlobalChatOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ from: string, text: string }[]>([]);
+  const [globalMessages, setGlobalMessages] = useState<{ from: string, text: string }[]>([]);
+
+  // Emote State
+  const [emoteMenuOpen, setEmoteMenuOpen] = useState(false);
 
   // Call State
   const [incomingCall, setIncomingCall] = useState<string | null>(null);
@@ -855,12 +1125,28 @@ const Game: React.FC<GameProps> = ({ elements, dimensions, ws, players, userID }
         scene.game.events.on('player-clicked', (id: string) => {
           setSelectedUser(id);
         });
+        scene.game.events.on('new-chat-message', (data: { from: string, text: string }) => {
+          setGlobalMessages(prev => [...prev, data]);
+        });
       }
     });
+
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT') return;
+
+      if (e.key.toLowerCase() === 'c') {
+        setGlobalChatOpen(prev => !prev);
+      }
+      if (e.key.toLowerCase() === 'e') {
+        setEmoteMenuOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
 
     return () => {
       game.destroy(true);
       sceneRef.current = null;
+      window.removeEventListener('keydown', handleKeydown);
     };
   }, [elements, dimensions, ws, userID, players]);
 
@@ -928,6 +1214,17 @@ const Game: React.FC<GameProps> = ({ elements, dimensions, ws, players, userID }
       payload: { to: chatTarget, message: text }
     }));
     setMessages(prev => [...prev, { from: 'me', text }]);
+  };
+
+  const handleSendGlobalChat = (text: string) => {
+    if (!sceneRef.current) return;
+    sceneRef.current.sendChat(text);
+    setGlobalMessages(prev => [...prev, { from: 'me', text }]);
+  };
+
+  const handleSendEmote = (emote: string) => {
+    if (!sceneRef.current) return;
+    sceneRef.current.sendEmote(emote);
   };
 
   const handleStartCall = () => {
@@ -1015,6 +1312,33 @@ const Game: React.FC<GameProps> = ({ elements, dimensions, ws, players, userID }
           }}
         />
       )}
+
+      {/* Global Systems Overlay */}
+      {globalChatOpen && (
+        <GlobalChatSidebar
+          messages={globalMessages}
+          onSend={handleSendGlobalChat}
+          onClose={() => setGlobalChatOpen(false)}
+          getDisplayName={getDisplayName}
+        />
+      )}
+
+      {emoteMenuOpen && (
+        <EmoteMenu
+          onSelect={handleSendEmote}
+          onClose={() => setEmoteMenuOpen(false)}
+        />
+      )}
+
+      {/* Help Tip */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur px-4 py-2 rounded-full border border-white/5 pointer-events-none transition-opacity duration-300 group hover:opacity-100 opacity-60">
+        <p className="text-[10px] font-bold text-gray-400 flex gap-4 uppercase tracking-[0.2em]">
+          <span><b className="text-blue-400 mr-1">[C]</b> Global Chat</span>
+          <span><b className="text-blue-400 mr-1">[E]</b> Emotes</span>
+          <span><b className="text-blue-400 mr-1">[Scroll]</b> Zoom</span>
+        </p>
+      </div>
+
     </div>
   );
 };

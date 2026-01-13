@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import useAuthStore from "../stores/useAuthStore";
 import Navbar from "../components/navbar";
 import { useNavigate } from "react-router-dom";
+import useToastStore from "../stores/useToastStore";
 
 interface MapTemplate {
     mapID: string;
@@ -16,6 +17,7 @@ const ArenaSpace = () => {
     const [maps, setMaps] = useState<MapTemplate[]>([]);
     const [, setLoading] = useState(true);
     const navigate = useNavigate();
+    const addToast = useToastStore((state) => state.addToast);
 
     // Creation State
     const [selectedMap, setSelectedMap] = useState<MapTemplate | null>(null);
@@ -43,7 +45,7 @@ const ArenaSpace = () => {
     }, [getMaps]);
 
     async function handleCreate() {
-        if (!spaceName) return alert("Please name your space");
+        if (!spaceName) return addToast("Please name your space", "warning");
 
         const payload = isCustom
             ? { name: spaceName, dimensions: `${customWidth}x${customHeight}` }
@@ -60,17 +62,18 @@ const ArenaSpace = () => {
             }).then(res => res.json());
 
             if (res.spaceID) {
+                addToast("Universal portal created!", "success");
                 navigate(`/createSpace?spaceID=${res.spaceID}`);
             }
         } catch (e) {
             console.error(e);
-            alert("Failed to create space");
+            addToast("Failed to create space portal", "error");
         }
     }
 
     return (
         <div className="min-h-screen bg-gray-950 text-white font-sans">
-            <Navbar />
+            <Navbar showBack />
 
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <div className="text-center mb-16">

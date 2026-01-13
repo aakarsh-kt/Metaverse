@@ -1,5 +1,7 @@
 import { useState } from "react";
 import useAuthStore from "../stores/useAuthStore";
+import useToastStore from "../stores/useToastStore";
+import Navbar from "../components/navbar";
 // import { useNavigate } from "react-router-dom";
 
 interface GameElementData {
@@ -17,6 +19,7 @@ const CreateElement = () => {
         { id: Date.now(), imageUrl: "", width: 1, height: 1, static: true }
     ]);
     const [submitting, setSubmitting] = useState(false);
+    const addToast = useToastStore((state) => state.addToast);
 
     const presetAssets = [
         { name: "Chair", url: "/assets/chair.svg" },
@@ -55,7 +58,7 @@ const CreateElement = () => {
             const validElements = elements.filter(e => e.imageUrl.trim() !== "");
 
             if (validElements.length === 0) {
-                alert("Please add at least one element with a valid Image URL.");
+                addToast("Please provide at least one valid asset URL.", "warning");
                 setSubmitting(false);
                 return;
             }
@@ -77,12 +80,12 @@ const CreateElement = () => {
             );
 
             await Promise.all(promises);
-            alert("Elements created successfully!");
+            addToast("Nexus elements initialized successfully!", "success");
             // Reset to one empty card
             setElements([{ id: Date.now(), imageUrl: "", width: 1, height: 1, static: true }]);
         } catch (error) {
             console.error("Failed to create elements", error);
-            alert("Error creating elements. Check console.");
+            addToast("An error occurred while forging elements", "error");
         } finally {
             setSubmitting(false);
         }
@@ -90,6 +93,7 @@ const CreateElement = () => {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white p-8 pt-24">
+            <Navbar showBack />
             <div className="max-w-7xl mx-auto space-y-8">
 
                 {/* Header */}

@@ -44,8 +44,9 @@ model SpaceElement{
   spaceID String
   x Int
   y Int
-  space Space @relation(fields: [spaceID],references: [spaceID])
-  element Element @relation(fields: [elementID],references: [elementID])
+  static Boolean @default(false)
+  space Space @relation(fields: [spaceID],references: [spaceID], onDelete: Cascade)
+  element Element @relation(fields: [elementID],references: [elementID], onDelete: Cascade)
 }
 
 model Avatar{
@@ -80,6 +81,6 @@ model MapElements {
   elementID String
   x Int?
   y Int?
-  map Map @relation(fields: [mapID],references: [mapID])
-  element Element @relation(fields: [elementID],references: [elementID])
+  map Map @relation(fields: [mapID],references: [mapID], onDelete: Cascade)
+  element Element @relation(fields: [elementID],references: [elementID], onDelete: Cascade)
 }

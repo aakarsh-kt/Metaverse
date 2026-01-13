@@ -58,6 +58,17 @@ export class User {
                 return;
             }
 
+            if (data.type === "chat" || data.type === "emote") {
+                this.roomManager.broadcast({
+                    type: data.type,
+                    payload: {
+                        from: this.userId,
+                        ...data.payload
+                    }
+                }, this, this.spaceId ?? "");
+                return;
+            }
+
             if (data.type === "direct-message" ||
                 data.type === "call-request" ||
                 data.type === "call-response" ||

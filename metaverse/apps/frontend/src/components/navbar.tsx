@@ -2,25 +2,53 @@ import { useNavigate } from "react-router-dom";
 import useAuthStore from "../stores/useAuthStore";
 import useThemeStore from "../stores/useThemeStore";
 
-const Navbar = () => {
+interface NavbarProps {
+    showBack?: boolean;
+    backUrl?: string;
+}
+
+const Navbar = ({ showBack = false, backUrl }: NavbarProps) => {
     const navigate = useNavigate();
     const token = useAuthStore((state) => state.token);
+    const role = useAuthStore((state) => state.role);
+    const logoutStore = useAuthStore((state) => state.logout);
     const { theme, toggleTheme } = useThemeStore();
 
     const logout = () => {
-        useAuthStore.setState({ token: null });
+        logoutStore();
         navigate("/");
+    };
+
+    const handleBack = () => {
+        if (backUrl) {
+            navigate(backUrl);
+        } else {
+            navigate("/space");
+        }
     };
 
     return (
         <div className="fixed top-0 inset-x-0 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-50 px-6 flex items-center justify-between transition-colors">
-            {/* Logo */}
-            <h1
-                onClick={() => navigate('/')}
-                className="text-2xl font-black italic tracking-tighter cursor-pointer bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
-            >
-                Meta Mesh
-            </h1>
+            {/* Left Section: Back or Logo */}
+            <div className="flex items-center gap-4">
+                {showBack && (
+                    <button
+                        onClick={handleBack}
+                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors mr-2"
+                        title="Go Back"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                        </svg>
+                    </button>
+                )}
+                <h1
+                    onClick={() => navigate('/')}
+                    className="text-2xl font-black italic tracking-tighter cursor-pointer bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+                >
+                    Meta Mesh
+                </h1>
+            </div>
 
             {/* Actions */}
             <div className="flex items-center gap-4">
@@ -59,10 +87,18 @@ const Navbar = () => {
                     <>
                         <button
                             onClick={() => navigate("/space")}
-                            className="hidden md:block text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white font-medium text-sm transition-colors mr-2"
+                            className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white font-medium text-sm transition-colors mr-2"
                         >
                             Dashboard
                         </button>
+                        {role === 'admin' && (
+                            <button
+                                onClick={() => navigate("/admin")}
+                                className="bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-xs transition-all border border-blue-600/20 mr-2"
+                            >
+                                Admin Area
+                            </button>
+                        )}
                         <button
                             onClick={() => navigate("/profile")}
                             className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium text-sm transition-all border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"

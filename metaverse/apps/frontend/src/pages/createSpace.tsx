@@ -2,6 +2,8 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import useAuthStore from "../stores/useAuthStore";
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/navbar";
+import useToastStore from "../stores/useToastStore";
+import useModalStore from "../stores/useModalStore";
 
 interface SpaceElement {
   id: string;
@@ -41,6 +43,8 @@ const CreateSpace = () => {
   const [dimensions, setDimensions] = useState<Dimension>({ width: 0, height: 0 });
   const [selectedItem, setSelectedItem] = useState<GameObject | null>(null);
   const [loading, setLoading] = useState(true);
+  const addToast = useToastStore((state) => state.addToast);
+  const openModal = useModalStore((state) => state.openModal);
 
   useEffect(() => {
     getSpace();
@@ -143,7 +147,7 @@ const CreateSpace = () => {
         getSpace();
       } else {
         const j = await res.json().catch(() => ({}));
-        alert(j?.message ?? "Failed to update element");
+        addToast(j?.message ?? "Failed to update element", "error");
       }
     } catch (e) {
       console.error(e);
@@ -175,7 +179,7 @@ const CreateSpace = () => {
 
   return (
     <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden text-gray-100 font-sans pt-16">
-      <Navbar />
+      <Navbar showBack />
 
       <div className="flex-1 flex overflow-hidden">
 
@@ -188,7 +192,10 @@ const CreateSpace = () => {
               <span className="font-mono text-blue-400 font-medium">{spaceID}</span>
             </div>
             <button
-              onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }}
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                addToast("Portal link copied to clipboard!", "success");
+              }}
               className="pointer-events-auto bg-gray-900/80 backdrop-blur border border-gray-800 hover:bg-gray-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-lg"
             >
               Share Link
@@ -207,8 +214,8 @@ const CreateSpace = () => {
                 <div
                   className="grid"
                   style={{
-                    gridTemplateColumns: `repeat(${dimensions.width}, 40px)`,
-                    gridTemplateRows: `repeat(${dimensions.height}, 40px)`,
+                    gridTemplateColumns: `repeat(${dimensions.width}, 50px)`,
+                    gridTemplateRows: `repeat(${dimensions.height}, 50px)`,
                   }}
                 >
                   {Array.from({ length: dimensions.height * dimensions.width }).map((_, i) => {
@@ -220,14 +227,18 @@ const CreateSpace = () => {
                       <div
                         key={`${x}-${y}`}
                         className={`
-                                                    border border-white/[0.05] w-10 h-10 flex items-center justify-center relative group
+                                                    border border-white/[0.05] w-[50px] h-[50px] flex items-center justify-center relative group
                                                     ${existingElement ? "" : "hover:bg-blue-500/20 transition-colors"}
                                                 `}
                         onClick={() => {
                           if (existingElement) {
-                            if (window.confirm("Delete this element?")) {
-                              handleDeleteElement(existingElement.id);
-                            }
+                            openModal({
+                              title: "Delete Element",
+                              message: "Are you sure you want to remove this piece of furniture from the universe?",
+                              type: "confirm",
+                              onConfirm: () => handleDeleteElement(existingElement.id),
+                              onCancel: () => { }
+                            });
                           } else {
                             handleAddElement(x, y);
                           }

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/navbar";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../stores/useAuthStore";
+import useToastStore from "../stores/useToastStore";
+import useModalStore from "../stores/useModalStore";
 
 interface Space {
     spaceID: string;
@@ -18,11 +20,12 @@ const Spaces = () => {
     const [activeTab, setActiveTab] = useState<"my" | "saved">("my");
     const [admin, setAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
+    const addToast = useToastStore((state) => state.addToast);
+    const openModal = useModalStore((state) => state.openModal);
 
     useEffect(() => {
         checkAdmin();
-        fetchMySpaces();
-        fetchSavedSpaces();
+        fetchAllSpaces();
     }, []);
 
     async function checkAdmin() {
@@ -40,7 +43,7 @@ const Spaces = () => {
         }
     }
 
-    async function fetchMySpaces() {
+    async function fetchAllSpaces() {
         try {
             const res = await fetch('http://localhost:3000/api/v1/space/all', {
                 method: "GET",
@@ -49,7 +52,9 @@ const Spaces = () => {
                     "authorization": `Bearer ${token}`
                 }
             }).then(res => res.json());
-            setMySpaces(res.spaces || []);
+
+            setMySpaces(res.owned || []);
+            setSavedSpaces(res.saved || []);
         } catch (e) {
             console.error("Failed to fetch spaces", e);
         } finally {
@@ -57,38 +62,32 @@ const Spaces = () => {
         }
     }
 
-    async function fetchSavedSpaces() {
-        try {
-            const res = await fetch('http://localhost:3000/api/v1/space/saved', {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "authorization": `Bearer ${token}`
-                }
-            }).then(res => res.json());
-            setSavedSpaces(res.spaces || []);
-        } catch (e) {
-            console.error("Failed to fetch saved spaces", e);
-        }
-    }
-
     async function handleDeleteSpace(id: string) {
-        if (!confirm("Are you sure you want to delete this space?")) return;
-        try {
-            const res = await fetch(`http://localhost:3000/api/v1/space/${id}`, {
-                method: "DELETE",
-                headers: {
-                    "authorization": `Bearer ${token}`
+        openModal({
+            title: "Delete Space",
+            message: "Are you sure you want to permanently delete this space? This action cannot be undone.",
+            type: "confirm",
+            onConfirm: async () => {
+                try {
+                    const res = await fetch(`http://localhost:3000/api/v1/space/${id}`, {
+                        method: "DELETE",
+                        headers: {
+                            "authorization": `Bearer ${token}`
+                        }
+                    });
+                    if (res.ok) {
+                        fetchAllSpaces();
+                        addToast("Space deleted successfully", "success");
+                    } else {
+                        addToast("Failed to delete space", "error");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    addToast("An error occurred during deletion", "error");
                 }
-            });
-            if (res.ok) {
-                fetchMySpaces();
-            } else {
-                alert("Failed to delete space");
-            }
-        } catch (e) {
-            console.error(e);
-        }
+            },
+            onCancel: () => { }
+        });
     }
 
     const handleEnterSpace = (id: string) => {
@@ -100,54 +99,71 @@ const Spaces = () => {
     };
 
     async function handleAddToCollection() {
-        const id = prompt("Enter the Space ID to add to your collection:");
-        if (!id) return;
+        openModal({
+            title: "Add to Collection",
+            message: "Enter the unique Space ID of the world you want to add to your personal collection.",
+            type: "prompt",
+            placeholder: "e.g. cmj...",
+            onConfirm: async (id) => {
+                if (!id) return;
+                const trimmedId = id.trim();
 
-        try {
-            const res = await fetch("http://localhost:3000/api/v1/space/save", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ spaceID: id })
-            });
+                try {
+                    const res = await fetch("http://localhost:3000/api/v1/space/join", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ spaceID: trimmedId })
+                    });
 
-            const data = await res.json();
-            if (res.ok) {
-                alert("Space added to collection!");
-                fetchSavedSpaces();
-                setActiveTab("saved");
-            } else {
-                alert(`Failed to add: ${data.message}`);
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Network error");
-        }
+                    const data = await res.json();
+                    if (res.ok) {
+                        addToast("Space added to collection!", "success");
+                        fetchAllSpaces();
+                        setActiveTab("saved");
+                    } else {
+                        addToast(`Failed to add: ${data.message}`, "error");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    addToast("Network error occurred", "error");
+                }
+            },
+            onCancel: () => { }
+        });
     }
 
     async function handleRemoveFromCollection(id: string) {
-        if (!confirm("Remove from your collection?")) return;
+        openModal({
+            title: "Remove from Collection",
+            message: "Are you sure you want to remove this space from your collection?",
+            type: "confirm",
+            onConfirm: async () => {
+                try {
+                    const res = await fetch("http://localhost:3000/api/v1/space/join", {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ spaceID: id })
+                    });
 
-        try {
-            const res = await fetch("http://localhost:3000/api/v1/space/save", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    "authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ spaceID: id })
-            });
-
-            if (res.ok) {
-                fetchSavedSpaces();
-            } else {
-                alert("Failed to remove space");
-            }
-        } catch (e) {
-            console.error(e);
-        }
+                    if (res.ok) {
+                        addToast("Removed from collection", "success");
+                        fetchAllSpaces();
+                    } else {
+                        addToast("Failed to remove space", "error");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    addToast("An error occurred", "error");
+                }
+            },
+            onCancel: () => { }
+        });
     }
 
     const displayedSpaces = activeTab === "my" ? mySpaces : savedSpaces;
@@ -160,11 +176,15 @@ const Spaces = () => {
 
                 {/* Header & Actions */}
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-xs">M</div>
+                            <span className="text-xs font-bold text-gray-400 tracking-[0.2em] uppercase">Meta Mesh Universe</span>
+                        </div>
+                        <h1 className="text-5xl font-black bg-gradient-to-r from-gray-900 to-gray-500 dark:from-white dark:to-gray-500 bg-clip-text text-transparent">
                             Dashboard
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your spaces and collections.</p>
+                        <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Manage your digital realms and curated collections.</p>
                     </div>
                     <div className="flex gap-4">
                         <button
@@ -217,28 +237,40 @@ const Spaces = () => {
                         <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
                 ) : displayedSpaces.length === 0 ? (
-                    <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 transition-colors">
-                        <p className="text-gray-500 text-lg">
+                    <div className="text-center py-24 bg-gray-50/50 dark:bg-gray-900/40 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 transition-all">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 012 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        </div>
+                        <p className="text-gray-500 dark:text-gray-400 text-xl font-medium">
                             {activeTab === "my"
-                                ? "You haven't created any spaces yet."
-                                : "You haven't added any spaces to your collection."}
+                                ? "Your multiverse is currently empty."
+                                : "Your collection is waiting to be filled."}
                         </p>
+                        <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Create or join a space to get started!</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {displayedSpaces.map((space) => (
-                            <div key={space.spaceID} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden hover:border-blue-500/50 dark:hover:border-gray-700 transition-all hover:shadow-xl group">
-                                <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
-                                    {/* Thumbnail Placeholder */}
-                                    <div className={`absolute inset-0 bg-gradient-to-br transition-transform duration-500 group-hover:scale-105 ${activeTab === "my" ? "from-blue-900/20 to-purple-900/20" : "from-purple-900/20 to-pink-900/20"}`}></div>
-                                    {space.thumbnail && <img src={space.thumbnail} alt={space.name} className="w-full h-full object-cover" />}
+                            <div key={space.spaceID} className="bg-white dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-3xl overflow-hidden hover:border-blue-500/50 dark:hover:border-blue-500/30 transition-all hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] group flex flex-col h-full">
+                                <div className="h-48 relative overflow-hidden">
+                                    {/* Thumbnail */}
+                                    <div className="absolute inset-0 bg-gray-200 dark:bg-gray-800">
+                                        {space.thumbnail ? (
+                                            <img src={space.thumbnail} alt={space.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                        ) : (
+                                            <div className={`w-full h-full bg-gradient-to-br ${activeTab === "my" ? "from-blue-600/20 to-indigo-600/20" : "from-purple-600/20 to-pink-600/20"}`}></div>
+                                        )}
+                                    </div>
 
-                                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur px-3 py-1 rounded-full text-xs font-mono text-gray-300 border border-white/10">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
+
+                                    {/* Dimensions Badge */}
+                                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] font-bold text-white border border-white/10 tracking-widest uppercase">
                                         {space.dimensions}
                                     </div>
 
                                     {/* Ownership Badge */}
-                                    <div className="absolute top-4 left-4 bg-white/80 dark:bg-black/60 backdrop-blur px-3 py-1 rounded-full text-xs font-bold border border-gray-200 dark:border-white/10 flex items-center gap-2">
+                                    <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-xl text-[10px] font-black border border-gray-200 dark:border-white/10 flex items-center gap-2 tracking-widest uppercase">
                                         {activeTab === "my" ? (
                                             <span className="text-blue-600 dark:text-blue-400">OWNER</span>
                                         ) : (

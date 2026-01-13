@@ -44,7 +44,7 @@ const JoinSpace = () => {
 
     return (
         <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden text-gray-100 font-sans pt-16">
-            <Navbar />
+            <Navbar showBack />
 
             <div className="flex-1 flex items-center justify-center relative overflow-hidden">
                 {/* Background Decoration */}
@@ -120,14 +120,6 @@ const JoinSpace = () => {
                     </form>
                 </div>
 
-                <div className="absolute bottom-8 text-center">
-                    <button
-                        onClick={() => navigate('/space')}
-                        className="text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
-                    >
-                        ← Return to Dashboard
-                    </button>
-                </div>
             </div>
         </div>
     );

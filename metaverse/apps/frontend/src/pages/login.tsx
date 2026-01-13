@@ -11,6 +11,7 @@ const Login = () => {
     const [error, setError] = useState("");
     const setToken = useAuthStore((state) => state.setToken);
     const setUserID = useAuthStore((state) => state.setUserID);
+    const setRole = useAuthStore((state) => state.setRole);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -29,6 +30,7 @@ const Login = () => {
             if (res.status === 200) {
                 setToken(response.token);
                 setUserID(response.userID!);
+                setRole(response.role);
                 navigate(`/`);
             } else {
                 setError(response.message || "Invalid username or password");

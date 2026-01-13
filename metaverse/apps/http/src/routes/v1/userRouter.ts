@@ -9,7 +9,7 @@ userRouter.get("/metadata", userMiddleware, async (req, res) => {
     try {
         const user = await client.user.findUnique({
             where: { id: req.userID },
-            select: { id: true, username: true, avatarID: true },
+            select: { id: true, username: true, avatarID: true, role: true },
         });
         if (!user) {
             res.status(404).json({ message: "User not found" });
@@ -19,6 +19,7 @@ userRouter.get("/metadata", userMiddleware, async (req, res) => {
             userID: user.id,
             username: user.username,
             avatarID: user.avatarID,
+            role: user.role
         });
     } catch (e) {
         res.status(400).json({ message: "Failed" });

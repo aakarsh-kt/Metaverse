@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { adminMiddleware } from "../../middleware/admin";
 export const adminRouter = Router();
-import { AddElementSchema, AddElementSchemaToMap, CreateAvatarSchema, createElementSchema, CreateMapSchema, GetMapElementSchema } from "../../types";
+import { AddElementSchema, AddElementSchemaToMap, CreateAvatarSchema, createElementSchema, CreateMapSchema, GetMapElementSchema, UpdateElementSchema, UpdateMapSchema } from "../../types";
 import client from "@repo/db/client"
 import { error } from "console";
 
@@ -209,6 +209,108 @@ adminRouter.get("/map", adminMiddleware, async (req, res) => {
         return
     }
 })
+
+adminRouter.get("/elements", adminMiddleware, async (req, res) => {
+    try {
+        const elements = await client.element.findMany();
+        res.status(200).json({ elements });
+    } catch (e) {
+        res.status(500).json({ message: "Failed to fetch elements" });
+    }
+});
+
+adminRouter.put("/element/:elementID", adminMiddleware, async (req, res) => {
+    const parsedData = UpdateElementSchema.safeParse(req.body);
+    if (!parsedData.success) {
+        res.status(400).json({ message: "Invalid update data" });
+        return;
+    }
+    try {
+        await client.element.update({
+            where: { elementID: req.params.elementID },
+            data: parsedData.data
+        });
+        res.status(200).json({ message: "Element updated" });
+    } catch (e) {
+        res.status(400).json({ message: "Update failed" });
+    }
+});
+
+adminRouter.delete("/element/:elementID", adminMiddleware, async (req, res) => {
+    try {
+        await client.element.delete({
+            where: { elementID: req.params.elementID }
+        });
+        res.status(200).json({ message: "Element deleted" });
+    } catch (e) {
+        res.status(400).json({ message: "Delete failed" });
+    }
+});
+
+adminRouter.get("/maps", adminMiddleware, async (req, res) => {
+    try {
+        const maps = await client.map.findMany();
+        res.status(200).json({
+            maps: maps.map(m => ({
+                mapID: m.mapID,
+                name: m.name,
+                thumbnail: m.thumbnail,
+                width: m.width,
+                height: m.height
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ message: "Failed to fetch maps" });
+    }
+});
+
+adminRouter.put("/map/:mapID", adminMiddleware, async (req, res) => {
+    const parsedData = UpdateMapSchema.safeParse(req.body);
+    if (!parsedData.success) {
+        res.status(400).json({ message: "Invalid update data" });
+        return;
+    }
+    try {
+        const { dimensions, defaultElements, ...rest } = parsedData.data;
+        const updateData: any = { ...rest };
+
+        if (dimensions) {
+            updateData.width = parseInt(dimensions.split('x')[0]);
+            updateData.height = parseInt(dimensions.split('x')[1]);
+        }
+
+        if (defaultElements) {
+            await client.mapElements.deleteMany({ where: { mapID: req.params.mapID } });
+            updateData.mapElements = {
+                create: defaultElements.map(e => ({
+                    elementID: e.elementID,
+                    x: e.x,
+                    y: e.y
+                }))
+            };
+        }
+
+        await client.map.update({
+            where: { mapID: req.params.mapID },
+            data: updateData
+        });
+        res.status(200).json({ message: "Map updated" });
+    } catch (e) {
+        console.error(e);
+        res.status(400).json({ message: "Update failed" });
+    }
+});
+
+adminRouter.delete("/map/:mapID", adminMiddleware, async (req, res) => {
+    try {
+        await client.map.delete({
+            where: { mapID: req.params.mapID }
+        });
+        res.status(200).json({ message: "Map deleted" });
+    } catch (e) {
+        res.status(400).json({ message: "Delete failed" });
+    }
+});
 adminRouter.post("/map/getElement", adminMiddleware, async (req, res) => {
     const parsedData = GetMapElementSchema.safeParse(req.body);
     if (!parsedData.success) {

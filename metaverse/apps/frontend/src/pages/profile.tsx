@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/navbar";
 import useAuthStore from "../stores/useAuthStore";
+import useToastStore from "../stores/useToastStore";
 import { fetchAvatars, type Avatar } from "../lib/avatars";
 
 const Profile = () => {
@@ -10,7 +11,7 @@ const Profile = () => {
     const [selectedAvatarID, setSelectedAvatarID] = useState<string>("");
     const [username, setUsername] = useState<string>("");
     const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState<string>("");
+    const addToast = useToastStore((s) => s.addToast);
 
     useEffect(() => {
         let mounted = true;
@@ -22,7 +23,7 @@ const Profile = () => {
                 if (list[0]?.avatarID) setSelectedAvatarID(list[0].avatarID);
             } catch (e) {
                 console.error(e);
-                if (mounted) setMessage("Failed to load avatars.");
+                if (mounted) addToast("Failed to load avatars.", "error");
             }
         })();
         return () => {
@@ -57,13 +58,12 @@ const Profile = () => {
 
     async function saveAvatar() {
         if (!token) {
-            setMessage("Please login first.");
+            addToast("Please login first.", "warning");
             return;
         }
         if (!selectedAvatarID) return;
 
         setSaving(true);
-        setMessage("");
 
         try {
             const res = await fetch("http://localhost:3000/api/v1/user/metadata", {
@@ -77,14 +77,14 @@ const Profile = () => {
 
             if (!res.ok) {
                 const j = await res.json().catch(() => ({}));
-                setMessage(j?.message ?? "Failed to update avatar");
+                addToast(j?.message ?? "Failed to update avatar", "error");
                 return;
             }
 
-            setMessage("Avatar updated!");
+            addToast("Avatar updated!", "success");
         } catch (e) {
             console.error(e);
-            setMessage("Network error");
+            addToast("Network error", "error");
         } finally {
             setSaving(false);
         }
@@ -92,17 +92,16 @@ const Profile = () => {
 
     async function saveUsername() {
         if (!token) {
-            setMessage("Please login first.");
+            addToast("Please login first.", "warning");
             return;
         }
         const trimmed = username.trim();
         if (trimmed.length < 3) {
-            setMessage("Username must be at least 3 characters.");
+            addToast("Username must be at least 3 characters.", "warning");
             return;
         }
 
         setSaving(true);
-        setMessage("");
 
         try {
             const res = await fetch("http://localhost:3000/api/v1/user/metadata", {
@@ -116,14 +115,14 @@ const Profile = () => {
 
             if (!res.ok) {
                 const j = await res.json().catch(() => ({}));
-                setMessage(j?.message ?? "Failed to update username");
+                addToast(j?.message ?? "Failed to update username", "error");
                 return;
             }
 
-            setMessage("Username updated!");
+            addToast("Username updated!", "success");
         } catch (e) {
             console.error(e);
-            setMessage("Network error");
+            addToast("Network error", "error");
         } finally {
             setSaving(false);
         }
@@ -131,7 +130,7 @@ const Profile = () => {
 
     return (
         <div className="min-h-screen bg-white dark:bg-gray-950 flex flex-col text-black dark:text-gray-100 font-sans pt-16 transition-colors">
-            <Navbar />
+            <Navbar showBack />
 
             <div className="flex-1 max-w-3xl w-full mx-auto p-8">
                 <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Profile</h1>
@@ -187,7 +186,6 @@ const Profile = () => {
                             >
                                 {saving ? "Saving..." : "Save avatar"}
                             </button>
-                            {message && <div className="text-sm text-gray-600 dark:text-gray-300">{message}</div>}
                         </div>
                     </div>
                 </div>

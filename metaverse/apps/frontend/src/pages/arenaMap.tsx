@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/navbar";
 import useAuthStore from "../stores/useAuthStore";
+import useToastStore from "../stores/useToastStore";
+import useModalStore from "../stores/useModalStore";
+import { useLocation } from "react-router-dom";
 
 const SESSION_STORAGE_KEY = import.meta.env.REACT_APP_SESSION_STORAGE_KEY || "currentMapId";
 
@@ -22,6 +25,11 @@ interface GameObject {
 const ArenaMap = () => {
     const token = useAuthStore((state) => state.token);
     const [objects, setObjects] = useState<GameObject[]>([]);
+    const addToast = useToastStore((state) => state.addToast);
+    const openModal = useModalStore((state) => state.openModal);
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const editMapId = queryParams.get("edit");
 
     // Map State
     const [name, setName] = useState("");
@@ -44,7 +52,11 @@ const ArenaMap = () => {
 
     useEffect(() => {
         getObjects();
-    }, []);
+        if (editMapId) {
+            setMapID(editMapId);
+            setIsDraft(true); // Treat as a draft that updates via PUT
+        }
+    }, [editMapId]);
 
     useEffect(() => {
         if (mapID && !isDraft) {
@@ -89,13 +101,14 @@ const ArenaMap = () => {
             }).then(res => res.json());
             if (res.width) setWidth(res.width);
             if (res.height) setHeight(res.height);
+            if (res.name) setName(res.name);
         } catch (e) {
             console.error(e);
         }
     }
 
     function initDraft() {
-        if (!name) return alert("Please enter a map name");
+        if (!name) return addToast("Please enter a name for your masterpiece", "warning");
         setIsDraft(true);
         // We set mapID to a temporary dummy string effectively acting as "created" for the UI flows
         setMapID("DRAFT-MODE");
@@ -107,8 +120,13 @@ const ArenaMap = () => {
         setLoading(true);
 
         try {
-            const response = await fetch("http://localhost:3000/api/v1/admin/map", {
-                method: "POST",
+            const method = editMapId ? "PUT" : "POST";
+            const url = editMapId
+                ? `http://localhost:3000/api/v1/admin/map/${editMapId}`
+                : "http://localhost:3000/api/v1/admin/map";
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     "Content-Type": "application/json",
                     "authorization": `Bearer ${token}`
@@ -116,7 +134,7 @@ const ArenaMap = () => {
                 body: JSON.stringify({
                     name,
                     dimensions: `${width}x${height}`,
-                    thumbnail: "https://placehold.co/600x400/1a1a1a/ffffff?text=Map+Preview", // Use a valid URL placeholder
+                    thumbnail: "https://placehold.co/600x400/1a1a1a/ffffff?text=Map+Preview",
                     defaultElements: mapElements.map(e => ({
                         elementID: e.elementID,
                         x: e.x,
@@ -127,17 +145,15 @@ const ArenaMap = () => {
 
             const res = await response.json();
 
-            if (response.ok && res.mapID) {
-                setMapID(res.mapID);
-                setIsDraft(false); // No longer draft
-                alert("Map saved successfully!");
+            if (response.ok) {
+                if (!editMapId) setMapID(res.mapID);
+                setIsDraft(false);
+                addToast(editMapId ? "Map blueprints recalibrated!" : "Universal blueprint etched into eternity!", "success");
             } else {
-                console.error("Map creation failed:", res);
-                alert(`Failed to create map: ${res.message || "Unknown error"} \n${res.error ? JSON.stringify(res.error) : ""}`);
+                addToast(`Failed to etch map: ${res.message || "Unknown anomaly"}`, "error");
             }
         } catch (e) {
-            console.error(e);
-            alert("Error creating map: Network or Server Error");
+            addToast("Temporal error: Map saving failed", "error");
         } finally {
             setLoading(false);
         }
@@ -220,7 +236,7 @@ const ArenaMap = () => {
 
     return (
         <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden text-gray-100 font-sans pt-16">
-            <Navbar />
+            <Navbar showBack />
 
             <div className="flex-1 flex overflow-hidden">
 
@@ -370,11 +386,25 @@ const ArenaMap = () => {
 
                             <button
                                 onClick={() => {
-                                    if (isDraft && !confirm("Discard unsaved map?")) return;
-                                    sessionStorage.removeItem(SESSION_STORAGE_KEY);
-                                    setMapID("");
-                                    setMapElements([]);
-                                    setIsDraft(false);
+                                    if (isDraft) {
+                                        openModal({
+                                            title: "Discard Blueprint?",
+                                            message: "Draft mode is active. If you exit now, all unsaved changes will be lost forever.",
+                                            type: "confirm",
+                                            onConfirm: () => {
+                                                sessionStorage.removeItem(SESSION_STORAGE_KEY);
+                                                setMapID("");
+                                                setMapElements([]);
+                                                setIsDraft(false);
+                                            },
+                                            onCancel: () => { }
+                                        });
+                                    } else {
+                                        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+                                        setMapID("");
+                                        setMapElements([]);
+                                        setIsDraft(false);
+                                    }
                                 }}
                                 className="text-xs text-red-400 hover:text-red-300 font-medium"
                             >

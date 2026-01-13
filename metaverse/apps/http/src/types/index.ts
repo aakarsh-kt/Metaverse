@@ -70,6 +70,24 @@ export const GetMapElementSchema = z.object({
     mapID: z.string()
 })
 
+export const UpdateElementSchema = z.object({
+    imageUrl: z.string().optional(),
+    width: z.number().optional(),
+    height: z.number().optional(),
+    static: z.boolean().optional()
+})
+
+export const UpdateMapSchema = z.object({
+    thumbnail: z.string().url().optional(),
+    dimensions: z.string().regex(/^[0-9]{1,4}x[0-9]{1,4}$/).optional(),
+    name: z.string().optional(),
+    defaultElements: z.array(z.object({
+        elementID: z.string(),
+        x: z.number(),
+        y: z.number()
+    })).optional()
+})
+
 export const CreateAvatarSchema = z.object({
     imageUrl: z.string(),
     name: z.string()
